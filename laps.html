@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>比賽計時</title>
+
+<style>
+  body { font-family: Arial, sans-serif; margin:10px; font-size:18px; }
+  .row { display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+  input, select, button { font-size:18px; padding:8px; border-radius:6px; }
+  button { border:none; cursor:pointer; color:#fff; }
+
+  .btn-blue  { background:#cce5ff; color:#000; }
+  .btn-red   { background:#ff99e6; color:#000; }  /* Finish 按鈕淡紅色 */
+  .btn-green { background:#28a745; }
+  .btn-orange{ background:#fd7e14; }
+
+  #today { width:6em; }
+  #place { width:5em; }
+  #distance { width:3em; }
+
+  table { width:100%; border-collapse:collapse; margin-top:12px; }
+  th, td { border:1px solid #ccc; padding:0; }
+  th { background:#f0f0f0; padding:6px; text-align:left; }
+
+  .player-row { background:#eef6ff; }
+  .sub-row { background:#fff; }
+  .sub-row td { padding:3px; font-size:15px; }
+
+  .player-row td { padding:0; }
+  .player-row button { margin:0; padding:6px; width:100%; }
+
+  .player-num {
+    width:100%;
+    text-align:center;
+    font-weight:bold;
+    font-size:24px;
+    padding:14px 4px;
+    line-height:1.2;
+    user-select:none;
+    cursor:grab;
+    background:#ffffff;
+    box-sizing:border-box;
+  }
+
+  td.col-num {
+    width:18%;
+    min-width:80px;
+    max-width:100px;
+    padding:0;
+    background:#ffffff;
+    box-sizing:border-box;
+  }
+
+  .time-big { font-size:26px; text-align:center; padding:6px; }
+
+  .info-box {
+    display:flex;
+    justify-content:space-between;
+    padding:2px;
+    gap:10px;
+  }
+
+  tr.dragging { opacity:0.4; }
+</style>
+</head>
+
+<body>
+
+<div id="scoreArea">
+  <div class="row">
+    <input id="today" disabled />
+    <input id="place" placeholder="地點" />
+    <input id="distance" placeholder="距離" />
+    <select id="type">
+      <option>自由式</option>
+      <option>傳統式</option>
+    </select>
+  </div>
+
+  <table id="players">
+    <!-- 01 謝宛倫 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">01</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(0)">謝宛倫</button></td>
+      <td id="score_0" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(0)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_0">0</span></span>
+          <span>last:<span id="last_0">00:00:000</span></span>
+          <span>avg:<span id="avg_0">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 02 廖崇亦 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">02</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(1)">廖崇亦</button></td>
+      <td id="score_1" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(1)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_1">0</span></span>
+          <span>last:<span id="last_1">00:00:000</span></span>
+          <span>avg:<span id="avg_1">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 03 王慎安 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">03</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(2)">王慎安</button></td>
+      <td id="score_2" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(2)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_2">0</span></span>
+          <span>last:<span id="last_2">00:00:000</span></span>
+          <span>avg:<span id="avg_2">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 04 鄭閎允 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">04</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(3)">鄭閎允</button></td>
+      <td id="score_3" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(3)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_3">0</span></span>
+          <span>last:<span id="last_3">00:00:000</span></span>
+          <span>avg:<span id="avg_3">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 05 楊沁嶧 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">05</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(4)">楊沁嶧</button></td>
+      <td id="score_4" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(4)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_4">0</span></span>
+          <span>last:<span id="last_4">00:00:000</span></span>
+          <span>avg:<span id="avg_4">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 06 陳星睿 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">06</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(5)">陳星睿</button></td>
+      <td id="score_5" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(5)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_5">0</span></span>
+          <span>last:<span id="last_5">00:00:000</span></span>
+          <span>avg:<span id="avg_5">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 11 劉振嶺 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">11</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(6)">劉振嶺</button></td>
+      <td id="score_6" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(6)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_6">0</span></span>
+          <span>last:<span id="last_6">00:00:000</span></span>
+          <span>avg:<span id="avg_6">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 12 余泓霖 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">12</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(7)">余泓霖</button></td>
+      <td id="score_7" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(7)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_7">0</span></span>
+          <span>last:<span id="last_7">00:00:000</span></span>
+          <span>avg:<span id="avg_7">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 13 鄭閎升 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">13</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(8)">鄭閎升</button></td>
+      <td id="score_8" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(8)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_8">0</span></span>
+          <span>last:<span id="last_8">00:00:000</span></span>
+          <span>avg:<span id="avg_8">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 14 李棋勝 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">14</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(9)">李棋勝</button></td>
+      <td id="score_9" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(9)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_9">0</span></span>
+          <span>last:<span id="last_9">00:00:000</span></span>
+          <span>avg:<span id="avg_9">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 15 孫晨軒 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">15</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(10)">孫晨軒</button></td>
+      <td id="score_10" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(10)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_10">0</span></span>
+          <span>last:<span id="last_10">00:00:000</span></span>
+          <span>avg:<span id="avg_10">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 16 蔡沛諺 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">16</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(11)">蔡沛諺</button></td>
+      <td id="score_11" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(11)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_11">0</span></span>
+          <span>last:<span id="last_11">00:00:000</span></span>
+          <span>avg:<span id="avg_11">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 21 江武騏 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">21</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(12)">江武騏</button></td>
+      <td id="score_12" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(12)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_12">0</span></span>
+          <span>last:<span id="last_12">00:00:000</span></span>
+          <span>avg:<span id="avg_12">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 22 林冠宇 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">22</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(13)">林冠宇</button></td>
+      <td id="score_13" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(13)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_13">0</span></span>
+          <span>last:<span id="last_13">00:00:000</span></span>
+          <span>avg:<span id="avg_13">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- 23 王宇昌 -->
+    <tr class="player-row">
+      <td class="col-num" rowspan="2"><div class="player-num">23</div></td>
+      <td><button class="btn-blue" onclick="tapPlayer(14)">王宇昌</button></td>
+      <td id="score_14" class="time-big">00:00:000</td>
+      <td><button class="btn-red" onclick="finishPlayer(14)">Finish</button></td>
+    </tr>
+    <tr class="sub-row">
+      <td colspan="3">
+        <div class="info-box">
+          <span>圈:<span id="lap_14">0</span></span>
+          <span>last:<span id="last_14">00:00:000</span></span>
+          <span>avg:<span id="avg_14">00:00:000</span></span>
+        </div>
+      </td>
+    </tr>
+
+  </table>
+</div>
+
+<div class="row" style="justify-content:space-between; margin-top:16px;">
+  <div></div>
+  <button class="btn-orange" id="captureScores">成績截圖</button>
+</div>
+
+<div class="row" style="margin-top:16px; margin-bottom:4px;">
+  <h3 style="margin:0;">歷程記錄</h3>
+  <button class="btn-green" onclick="sortLog()">記錄排序</button>
+  <button class="btn-orange" onclick="captureLog()">記錄截圖</button>
+</div>
+
+<table id="log"></table>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<script>
+let players = [
+  { num:'01', name:'謝宛倫' },
+  { num:'02', name:'廖崇亦' },
+  { num:'03', name:'王慎安' },
+  { num:'04', name:'鄭閎允' },
+  { num:'05', name:'楊沁嶧' },
+  { num:'06', name:'陳星睿' },
+  { num:'11', name:'劉振嶺' },
+  { num:'12', name:'余泓霖' },
+  { num:'13', name:'鄭閎升' },
+  { num:'14', name:'李棋勝' },
+  { num:'15', name:'孫晨軒' },
+  { num:'16', name:'蔡沛諺' },
+  { num:'21', name:'江武騏' },
+  { num:'22', name:'林冠宇' },
+  { num:'23', name:'王宇昌' }
+];
+
+let timers = {};
+let logs = [];
+
+document.getElementById("today").value = new Date().toISOString().substring(0,10);
+
+function fmt(ms){
+  let m = Math.floor(ms / 60000);
+  let s = Math.floor((ms % 60000) / 1000);
+  let ms3 = ms % 1000;
+  return String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0') + ":" + String(ms3).padStart(3,'0');
+}
+
+function startTimer(i){
+  const p = players[i];
+  if(!timers[i]){
+    p.start = Date.now();
+    p.laps = [];
+    timers[i] = setInterval(()=>{
+      document.getElementById("score_"+i).innerText = fmt(Date.now() - p.start);
+    },10);
+  }
+}
+
+function tapPlayer(i){
+  const p = players[i];
+  if(!timers[i]){ startTimer(i); return; }
+
+  let now = Date.now() - p.start;
+  let lapCount = p.laps.length + 1;
+  let last = lapCount === 1 ? now : now - p.laps[p.laps.length - 1];
+  p.laps.push(now);
+
+  document.getElementById("lap_"+i).innerText = lapCount;
+  document.getElementById("last_"+i).innerText = fmt(last);
+  document.getElementById("avg_"+i).innerText = fmt(Math.floor(now / lapCount));
+
+  logs.push({ num:p.num, name:p.name, lap:lapCount, last:fmt(last), total:fmt(now) });
+  renderLog();
+}
+
+function finishPlayer(i){
+  const p = players[i];
+  if(!timers[i]) return;
+
+  clearInterval(timers[i]);
+  timers[i] = null;
+
+  let now = Date.now() - p.start;
+  let lapCount = p.laps.length + 1;
+  let last = lapCount === 1 ? now : now - p.laps[p.laps.length - 1];
+  p.laps.push(now);
+
+  document.getElementById("lap_"+i).innerText = lapCount;
+  document.getElementById("last_"+i).innerText = fmt(last);
+  document.getElementById("avg_"+i).innerText = fmt(Math.floor(now / lapCount));
+  document.getElementById("score_"+i).innerText = fmt(now);
+
+  logs.push({ num:p.num, name:p.name, lap:lapCount, last:fmt(last), total:fmt(now) });
+  renderLog();
+}
+
+function renderLog(){
+  const tb = document.getElementById("log");
+  tb.innerHTML = "<tr><th>編號</th><th>姓名</th><th>圈</th><th>單圈</th><th>累計</th></tr>";
+  logs.forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${r.num}</td>
+       <td>${r.name}</td>
+       <td>${r.lap}</td>
+       <td>${r.last}</td>
+       <td>${r.total}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function sortLog(){
+  logs.sort((a, b) => {
+    const na = parseInt(a.num, 10);
+    const nb = parseInt(b.num, 10);
+    if (na !== nb) return na - nb;
+    return a.lap - b.lap;
+  });
+  renderLog();
+}
+
+function captureLog(){
+  html2canvas(document.getElementById("log"),{
+    scale:2,
+    backgroundColor:"#ffffff"
+  }).then(canvas=>{
+    const w = window.open("");
+    w.document.write(`<img src="${canvas.toDataURL()}" style="max-width:100%;">`);
+  });
+}
+
+/* 成績截圖：複製 scoreArea，帶入 input/select 的值，並在上方集中顯示所有編號 */
+document.getElementById("captureScores").addEventListener("click", () => {
+  const original = document.getElementById("scoreArea");
+
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed";
+  wrapper.style.left = "-10000px";
+  wrapper.style.top = "0";
+  wrapper.style.padding = "10px 10px 10px 30px";
+  wrapper.style.backgroundColor = "#ffffff";
+  wrapper.style.boxSizing = "border-box";
+
+  wrapper.innerHTML = original.outerHTML;
+  document.body.appendChild(wrapper);
+
+  const clonedScoreArea = wrapper.querySelector("#scoreArea");
+  const origInputs = original.querySelectorAll("input, select");
+  const cloneInputs = clonedScoreArea.querySelectorAll("input, select");
+
+  for (let i = 0; i < origInputs.length; i++) {
+    cloneInputs[i].value = origInputs[i].value;
+    if (origInputs[i].disabled) cloneInputs[i].disabled = true;
+  }
+
+  // ★★★ 這一段是新加的：只調整「截圖那份」的編號樣式，避免數字底部被切掉
+  const clonedNums = clonedScoreArea.querySelectorAll(".player-num");
+  clonedNums.forEach(el => {
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+    // 比原本多一些上下內距，讓 html2canvas 不會吃到底部
+    el.style.paddingTop = "14px";
+    el.style.paddingBottom = "24px";
+    el.style.lineHeight = "1.3";
+  });
+  // ★★★ 新增結束
+
+  html2canvas(clonedScoreArea, {
+    scale: 2,
+    backgroundColor: "#ffffff",
+    scrollX: 0,
+    scrollY: 0
+  }).then(canvas => {
+    document.body.removeChild(wrapper);
+    const w = window.open("");
+    w.document.write(`<img src="${canvas.toDataURL()}" style="max-width:100%;">`);
+  });
+});
+
+
+
+/* 手機 + 電腦拖曳排序（按住編號拖曳） */
+(function setupDrag(){
+  const table = document.getElementById("players");
+  let draggingRow = null;
+
+  function onPointerDown(e){
+    const numDiv = e.target.closest(".player-num");
+    if (!numDiv) return;
+
+    draggingRow = numDiv.closest("tr.player-row");
+    if (!draggingRow) return;
+
+    draggingRow.classList.add("dragging");
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+  }
+
+  function onPointerMove(e){
+    if (!draggingRow) return;
+
+    const tableRect = table.getBoundingClientRect();
+    const y = e.clientY - tableRect.top;
+
+    const rows = [...table.querySelectorAll("tr.player-row")].filter(r => r !== draggingRow);
+    const tbody = table.tBodies[0] || table;
+    const subRow = draggingRow.nextElementSibling;
+
+    for (let row of rows){
+      const rect = row.getBoundingClientRect();
+      const rowY = rect.top - tableRect.top;
+      const middle = rowY + rect.height / 2;
+
+      if (y < middle){
+        tbody.insertBefore(draggingRow, row);
+        tbody.insertBefore(subRow, draggingRow.nextSibling);
+        return;
+      }
+    }
+
+    tbody.appendChild(draggingRow);
+    tbody.appendChild(subRow);
+  }
+
+  function onPointerUp(){
+    if (!draggingRow) return;
+    draggingRow.classList.remove("dragging");
+    draggingRow = null;
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+  }
+
+  table.addEventListener("pointerdown", onPointerDown);
+})();
+
+renderLog();
+</script>
+
+</body>
+</html>
