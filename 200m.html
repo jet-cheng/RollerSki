@@ -59,7 +59,7 @@
         <tr><td><input type="checkbox"></td><td>04</td><td>鄭閎允</td></tr>
         <tr><td><input type="checkbox"></td><td>05</td><td>楊沁嶧</td></tr>
         <tr><td><input type="checkbox"></td><td>06</td><td>陳星睿</td></tr>
-        <tr><td><input type="checkbox"></td><td>11</td><td>劉振嶺</td></tr>
+        <tr><td><input type="checkbox"></td><td>11</td><td>劉震嶺</td></tr>
         <tr><td><input type="checkbox"></td><td>12</td><td>余泓霖</td></tr>
         <tr><td><input type="checkbox"></td><td>13</td><td>鄭閎升</td></tr>
         <tr><td><input type="checkbox"></td><td>14</td><td>李棋勝</td></tr>
@@ -79,7 +79,7 @@
     比賽計時
     <span class="toggle-btn">
       <label style="font-size:14px; color:white;">
-        <input type="checkbox" id="uploadCheck" checked style="width:18px; height:18px; vertical-align:middle; margin-right:4px;">GAS
+        <input type="checkbox" id="uploadCheck" checked style="width:18px; height:18px; vertical-align:middle; margin-right:2px;">
       </label>
       <button id="uploadBtn" onclick="uploadResults()">上傳資料</button>
       <button class="toggle-btn" onclick="toggleSection(this)">＋</button>
@@ -109,7 +109,7 @@
 </div>
 
 <script>
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyvZNZAaMQ3sBUpVk4MLCD_VjZrEVeErX4g9lE3R_-Q42fdl68dPsmbq0ZQyVGaB4kp/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx2vTGvJXVLdapYetS6xUgwvDXXXjiky-jdjUTwMMealEZEwIHIu9reLlizIzOqbbwl/exec";
 
 function toggleSection(btn) {
   const content = btn.closest("h2").nextElementSibling;
@@ -214,7 +214,7 @@ async function uploadResults() {
         const response = await fetch(GAS_URL, { method: "POST", body: formData });
         const resultText = await response.text();
         if (response.ok) {
-          alert(`✅ 上傳成功\n ${num} 選手：${name}`);
+          //alert(`✅ 上傳成功\n ${num} 選手：${name}`);
         } else {
           alert(`❌ 上傳失敗 (${response.status})\n ${num} 選手：${name}`);
         }
