@@ -25,18 +25,32 @@
   .btn-primary { background: #4caf50; color: white; }
   .btn-secondary { background: #2196f3; color: white; }
   .btn-finish { background: #ff5722; color: white; }
+  .btn-reset { background: #d9534f; color: white; }
   .highlight { background-color: #ccffcc !important; }
+  .timing-row { background-color: #fff4b8; }
+  .finished-row { background-color: #ccffcc; }
+  .status-pending { background-color: #e0e0e0; }
+  .status-uploaded { background-color: #b7e4c7; }
+  .status-failed { background-color: #ffb3b3; }
   .btn-group { display: flex; justify-content: center; }
-  #startBtn { display: block; margin: 0 auto 10px auto; width: 60%; background: #ffb347; }
-  #selectBtn { display: block; margin: 10px auto; width: 60%; background: #ffb347; color: white; }
-  #addBtn, #uploadBtn { font-size: 18px; padding: 6px 12px; background: #2196f3; color: white; border: none; border-radius: 5px; width: 120px; height: 40px; }
+  .select-actions { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  #startBtn { display: block; margin: 0 auto 10px auto; width: 80%; background: #ffb347; }
+  #selectBtn { display: block; margin: 10px 0; width: 180px; background: #ffb347; color: white; }
+  #addBtn, #uploadBtn, #resetBtn { font-size: 18px; padding: 6px 12px; color: white; border: none; border-radius: 5px; width: 140px; height: 44px; }
+  #addBtn, #uploadBtn { background: #2196f3; }
+  .legend-swatch { display:inline-block; width:18px; height:12px; border:1px solid #999; vertical-align:middle; margin-right:4px; }
+  .legend-uploaded { background:#b7e4c7; }
+  .legend-failed { background:#ffb3b3; }
+  .legend-pending { background:#e0e0e0; }
+  .banner { text-align:center; margin:6px 0; }
+  .banner img { width:70%; max-height:120px; object-fit:cover; border-radius:10px; }
   @media (max-width: 600px) { table, th, td { font-size: 20px; } }
 </style>
 </head>
 <body>
 
-<div style="text-align:center; margin:10px 0;">
-  <img src="200b.jpg" alt="Roller Ski Banner" style="width:80%; height:70%; border-radius:10px;">
+<div class="banner">
+  <img src="200b.jpg" alt="Roller Ski Banner">
 </div>
 
 <div class="section">
@@ -59,7 +73,7 @@
         <tr><td><input type="checkbox"></td><td>04</td><td>鄭閎允</td></tr>
         <tr><td><input type="checkbox"></td><td>05</td><td>楊沁嶧</td></tr>
         <tr><td><input type="checkbox"></td><td>06</td><td>陳星睿</td></tr>
-        <tr><td><input type="checkbox"></td><td>11</td><td>劉震嶺</td></tr>
+        <tr><td><input type="checkbox"></td><td>11</td><td>劉振嶺</td></tr>
         <tr><td><input type="checkbox"></td><td>12</td><td>余泓霖</td></tr>
         <tr><td><input type="checkbox"></td><td>13</td><td>鄭閎升</td></tr>
         <tr><td><input type="checkbox"></td><td>14</td><td>李棋勝</td></tr>
@@ -68,9 +82,15 @@
         <tr><td><input type="checkbox"></td><td>21</td><td>江武騏</td></tr>
         <tr><td><input type="checkbox"></td><td>22</td><td>林冠宇</td></tr>
         <tr><td><input type="checkbox"></td><td>23</td><td>王宇昌</td></tr>
+        <tr><td><input type="checkbox"></td><td>24</td><td>王宇宸</td></tr>
+        <tr><td><input type="checkbox"></td><td>25</td><td>黃友宏</td></tr>
+        <tr><td><input type="checkbox"></td><td>26</td><td>林書微</td></tr>
       </tbody>
     </table>
-    <button class="btn-primary" id="selectBtn" onclick="selectPlayers()">Select</button>
+    <div class="select-actions">
+      <button class="btn-primary" id="selectBtn" onclick="selectPlayers()">選取加入</button>
+      <button class="btn-reset" id="resetBtn" onclick="resetRace()">重置</button>
+    </div>
   </div>
 </div>
 
@@ -82,10 +102,10 @@
         <input type="checkbox" id="uploadCheck" checked style="width:18px; height:18px; vertical-align:middle; margin-right:2px;">
       </label>
       <button id="uploadBtn" onclick="uploadResults()">上傳資料</button>
-      <button class="toggle-btn" onclick="toggleSection(this)">＋</button>
+      <button class="toggle-btn" onclick="toggleSection(this)">－</button>
     </span>
   </h2>
-  <div class="content">
+  <div class="content" style="display:block;">
     <button class="btn-primary" id="startBtn" onclick="startTiming()">Start</button>
     <table id="timerTable">
       <thead>
@@ -110,6 +130,10 @@
 
 <script>
 const GAS_URL = "https://script.google.com/macros/s/AKfycbx2vTGvJXVLdapYetS6xUgwvDXXXjiky-jdjUTwMMealEZEwIHIu9reLlizIzOqbbwl/exec";
+let startTime = null;
+let timers = [];
+let raceStarted = false;
+let isUploading = false;
 
 function toggleSection(btn) {
   const content = btn.closest("h2").nextElementSibling;
@@ -119,47 +143,80 @@ function toggleSection(btn) {
 }
 
 function addPlayer() {
+  if (raceStarted) {
+    alert("比賽已開始，請先 Reset 或上傳完成後再新增選手。");
+    return;
+  }
   const number = prompt("請輸入選手編號：");
   const name = prompt("請輸入選手姓名：");
   if (!number || !name) return;
+  const cleanNumber = number.trim();
+  const exists = Array.from(document.querySelectorAll("#playerTable tbody tr"))
+    .some(row => row.cells[1].textContent.trim() === cleanNumber);
+  if (exists) {
+    alert(`編號 ${cleanNumber} 已存在，未新增選手。`);
+    return;
+  }
   const table = document.querySelector("#playerTable tbody");
   const row = table.insertRow();
-  row.innerHTML = `<td><input type="checkbox"></td><td>${number}</td><td>${name}</td>`;
+  row.innerHTML = `<td><input type="checkbox"></td><td>${cleanNumber}</td><td>${name.trim()}</td>`;
 }
 
 function selectPlayers() {
+  if (raceStarted) {
+    alert("比賽已開始，不能再加入選手。");
+    return;
+  }
   const playerRows = document.querySelectorAll("#playerTable tbody tr");
   const timerTable = document.querySelector("#timerTable tbody");
+  const existingNums = new Set(
+    Array.from(timerTable.querySelectorAll("tr")).map(row => row.cells[0].textContent.trim())
+  );
   playerRows.forEach(row => {
     const checkbox = row.querySelector("input[type=checkbox]");
     if (checkbox.checked) {
-      row.cells[2].classList.add("highlight");
       const num = row.cells[1].textContent;
       const name = row.cells[2].textContent;
+      if (existingNums.has(num.trim())) {
+        checkbox.checked = false;
+        alert(`${num} ${name} 已在比賽計時中。`);
+        return;
+      }
+      row.cells[2].classList.add("highlight");
       const newRow = timerTable.insertRow();
+      newRow.dataset.finished = "false";
+      newRow.dataset.uploadStatus = "pending";
       newRow.innerHTML = `
         <td>${num}</td>
         <td>${name}</td>
         <td class="time">00:00:000</td>
-        <td><button class="btn-finish" onclick="finishTime(this)">Finish</button></td>
+        <td><button class="btn-finish" onclick="finishTime(this)" disabled>Finish</button></td>
       `;
+      existingNums.add(num.trim());
       checkbox.checked = false;
     }
   });
 }
 
-let startTime = null;
-let timers = [];
-
 function startTiming() {
   const startBtn = document.getElementById("startBtn");
   if (startBtn.disabled) return;
+  const timerRows = Array.from(document.querySelectorAll("#timerTable tbody tr"));
+  if (timerRows.length === 0) {
+    alert("請先選取選手。");
+    return;
+  }
   startBtn.style.background = "#cccccc";
   startBtn.disabled = true;
+  raceStarted = true;
+  setSelectionLocked(true);
   startTime = Date.now();
   timers = [];
-  document.querySelectorAll("#timerTable tbody tr").forEach((row, index) => {
+  timerRows.forEach((row, index) => {
     const timeCell = row.querySelector(".time");
+    const finishBtn = row.querySelector(".btn-finish");
+    if (finishBtn) finishBtn.disabled = false;
+    row.classList.add("timing-row");
     timers[index] = setInterval(() => {
       const diff = Date.now() - startTime;
       timeCell.textContent = formatTime(diff);
@@ -171,6 +228,11 @@ function finishTime(btn) {
   const row = btn.closest("tr");
   const index = Array.from(row.parentNode.children).indexOf(row);
   clearInterval(timers[index]);
+  row.dataset.finished = "true";
+  row.classList.remove("timing-row");
+  row.classList.add("finished-row");
+  btn.disabled = true;
+  btn.textContent = "Done";
 }
 
 function formatTime(ms) {
@@ -180,21 +242,63 @@ function formatTime(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(ms3).padStart(3, '0')}`;
 }
 
+function setSelectionLocked(locked) {
+  document.getElementById("addBtn").disabled = locked;
+  document.getElementById("selectBtn").disabled = locked;
+  document.querySelectorAll("#playerTable input[type=checkbox]").forEach(cb => {
+    cb.disabled = locked;
+  });
+}
+
+function resetRace() {
+  if (!confirm("確定重置？計時表會清空，選手清單會解除選取狀態。")) return;
+  timers.forEach(timer => clearInterval(timer));
+  timers = [];
+  startTime = null;
+  raceStarted = false;
+  isUploading = false;
+  document.querySelector("#timerTable tbody").innerHTML = "";
+  const resultTableBody = document.querySelector("#resultTable tbody");
+  resultTableBody.innerHTML = "";
+  appendResultLegend(resultTableBody);
+  document.querySelectorAll("#playerTable tbody tr").forEach(row => {
+    row.cells[2].classList.remove("highlight");
+    const checkbox = row.querySelector("input[type=checkbox]");
+    checkbox.checked = false;
+    checkbox.disabled = false;
+  });
+  setSelectionLocked(false);
+  const startBtn = document.getElementById("startBtn");
+  startBtn.disabled = false;
+  startBtn.style.background = "#ffb347";
+  document.getElementById("uploadBtn").disabled = false;
+}
+
 async function uploadResults() {
+  if (isUploading) return;
   const uploadCheck = document.getElementById("uploadCheck").checked;
   const timerRows = Array.from(document.querySelectorAll("#timerTable tbody tr"));
   const resultTableBody = document.querySelector("#resultTable tbody");
   if (timerRows.length === 0) return;
+  const unfinished = timerRows.filter(row => row.dataset.finished !== "true");
+  if (unfinished.length > 0 && !confirm(`還有 ${unfinished.length} 位選手尚未 Finish，仍要上傳嗎？`)) {
+    return;
+  }
+
+  isUploading = true;
+  document.getElementById("uploadBtn").disabled = true;
   const today = new Date();
   const dateStr = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
   const existingResults = [];
   resultTableBody.querySelectorAll("tr").forEach(row => {
+    if (row.classList.contains("legend-row")) return;
     const cells = row.cells;
     existingResults.push({
       date: cells[0].textContent.trim(),
       num: cells[1].textContent.trim(),
       name: cells[2].textContent.trim(),
-      time: cells[3].textContent.trim()
+      time: cells[3].textContent.trim(),
+      status: row.dataset.uploadStatus || "pending"
     });
   });
   const toAdd = [];
@@ -202,26 +306,29 @@ async function uploadResults() {
     const num = (row.querySelector("td:nth-child(1)")?.textContent || "").trim();
     const name = (row.querySelector("td:nth-child(2)")?.textContent || "").trim();
     const time = (row.querySelector(".time")?.textContent || "").trim();
-    toAdd.push({ date: dateStr, num, name, time });
+    const resultRecord = { date: dateStr, num, name, time, status: uploadCheck ? "pending" : "pending" };
     if (uploadCheck) {
       try {
         const formData = new FormData();
-	formData.append("sheet","200m");
+        formData.append("sheet","200m");
         formData.append("date", dateStr);
         formData.append("num", num);
         formData.append("name", name);
         formData.append("time", time);
         const response = await fetch(GAS_URL, { method: "POST", body: formData });
         const resultText = await response.text();
-        if (response.ok) {
-          //alert(`✅ 上傳成功\n ${num} 選手：${name}`);
-        } else {
-          alert(`❌ 上傳失敗 (${response.status})\n ${num} 選手：${name}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
+        if (resultText.includes("❌") || resultText.includes("錯誤")) {
+          throw new Error(resultText);
+        }
+        resultRecord.status = "uploaded";
       } catch (err) {
-        alert(`⚠️ 網路或權限錯誤：\n ${num} 選手：${name}\n錯誤：${err.message}`);
+        resultRecord.status = "failed";
       }
     }
+    toAdd.push(resultRecord);
   }
   const allResults = existingResults.concat(toAdd);
   function timeToMsSafe(t) {
@@ -235,13 +342,40 @@ async function uploadResults() {
   resultTableBody.innerHTML = "";
   allResults.forEach(r => {
     const newRow = resultTableBody.insertRow();
+    newRow.dataset.uploadStatus = r.status || "pending";
+    newRow.className = statusClass(r.status);
     newRow.innerHTML = `<td>${r.date}</td><td>${r.num}</td><td>${r.name}</td><td>${r.time}</td>`;
   });
+  appendResultLegend(resultTableBody);
   document.querySelector("#timerTable tbody").innerHTML = "";
   const startBtn = document.getElementById("startBtn");
   startBtn.disabled = false;
   startBtn.style.background = "#ffb347";
+  raceStarted = false;
+  setSelectionLocked(false);
+  isUploading = false;
+  document.getElementById("uploadBtn").disabled = false;
 }
+
+function statusClass(status) {
+  if (status === "uploaded") return "status-uploaded";
+  if (status === "failed") return "status-failed";
+  return "status-pending";
+}
+
+function appendResultLegend(tbody) {
+  const legendRow = tbody.insertRow();
+  legendRow.className = "legend-row";
+  legendRow.innerHTML = `
+    <td colspan="4" style="text-align:left; font-size:16px;">
+      <span><span class="legend-swatch legend-uploaded"></span>已上傳</span>
+      <span style="margin-left:12px;"><span class="legend-swatch legend-failed"></span>上傳失敗</span>
+      <span style="margin-left:12px;"><span class="legend-swatch legend-pending"></span>尚未上傳</span>
+    </td>
+  `;
+}
+
+appendResultLegend(document.querySelector("#resultTable tbody"));
 
 window.addEventListener("beforeunload", function (e) {
   const confirmationMessage = "⚠️警告：若重新整理，所有比賽成績資料將會遺失！\n\n是否確定要重整？";
