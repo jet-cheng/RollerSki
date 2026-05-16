@@ -8,17 +8,23 @@
 <style>
   body { font-family: Arial, sans-serif; margin:10px; font-size:18px; }
   .row { display:flex; gap:8px; margin-bottom:12px; align-items:center; }
-  input, select, button { font-size:18px; padding:8px; border-radius:6px; }
+  .row-wrap { flex-wrap:wrap; }
+  input, select, button { font-size:18px; padding:8px; border-radius:6px; box-sizing:border-box; }
   button { border:none; cursor:pointer; color:#fff; }
+  button:disabled { cursor:not-allowed; opacity:0.55; }
 
   .btn-blue  { background:#cce5ff; color:#000; }
-  .btn-red   { background:#ff99e6; color:#000; }  
+  .btn-started { background:#ffe08a; color:#000; }
+  .btn-finished { background:#b7e4c7; color:#000; }
+  .btn-red   { background:#ff99e6; color:#000; }
   .btn-green { background:#28a745; }
   .btn-orange{ background:#fd7e14; }
+  .btn-gray  { background:#bfbfbf; color:#000; }
 
-  #today { width:6em; }
-  #place { width:5em; }
-  #distance { width:3em; }
+  #today { width:6.5em; }
+  #place { width:7em; }
+  #distance { width:6em; }
+  #type { width:6em; }
 
   table { width:100%; border-collapse:collapse; margin-top:12px; }
   th, td { border:1px solid #ccc; padding:0; }
@@ -29,7 +35,7 @@
   .sub-row td { padding:3px; font-size:15px; }
 
   .player-row td { padding:0; }
-  .player-row button { margin:0; padding:4px; width:100%; }
+  .player-row button { margin:0; padding:4px; width:100%; min-height:38px; font-weight:normal; }
 
   .player-num {
     width:100%;
@@ -52,16 +58,23 @@
     box-sizing:border-box;
   }
 
+  td.col-name { width:34%; }
+  td.col-score { width:28%; }
+  td.col-finish { width:20%; }
+
   .time-big {
-    font-size:18px;
+    font-size:20px;
     text-align:center;
     padding:4px;
+    white-space:nowrap;
   }
 
   .info-box {
+    min-height:30px;
     display:flex;
+    align-items:center;
     justify-content:space-between;
-    padding:2px;
+    padding:2px 6px;
     gap:10px;
   }
 
@@ -83,31 +96,47 @@
     touch-action:none;
     margin-right:6px;
   }
-  .drag-handle:active {
-    cursor:grabbing;
-  }
+  .drag-handle:active { cursor:grabbing; }
 
-  .btn-del{
+  .btn-del, .btn-undo-row{
     width:auto;
     padding:3px 8px;
     font-size:12px;
-    background:#bfbfbf;
-    color:#000;
   }
 
-  #log th, 
-  #log td {
-    text-align: center;
+  .tool-group {
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
   }
+
+  #log th,
+  #log td {
+    text-align:center;
+    padding:5px 3px;
+  }
+
+  #log tr.latest-log td { background:#fff4b8; }
+  #log td.uploaded-num { background:#b7e4c7; }
+  #log tr.latest-log td.uploaded-num { background:#8fd19e; }
+  #log td.upload-failed-num { background:#ffb3b3; }
+  #log tr.latest-log td.upload-failed-num { background:#ff8f8f; }
+  #status { font-size:14px; color:#444; min-height:20px; }
+  #uploadBtn { margin-left:auto; }
+  .legend { display:flex; gap:12px; align-items:center; font-size:14px; color:#444; margin:2px 0 8px; }
+  .legend-swatch { display:inline-block; width:18px; height:12px; border:1px solid #999; vertical-align:middle; margin-right:4px; }
+  .legend-uploaded { background:#b7e4c7; }
+  .legend-failed { background:#ffb3b3; }
 </style>
 </head>
 
 <body>
 
 <div id="scoreArea">
-  <div class="row">
+  <div class="row row-wrap" id="raceHeader">
     <input id="today" disabled />
-    <input id="place" placeholder="地點" value="山水綠公園" />
+    <input id="place" placeholder="地點" value="大都會公園" />
     <input id="distance" placeholder="距離" />
     <select id="type">
       <option>自由式</option>
@@ -116,541 +145,608 @@
   </div>
 
   <table id="players">
-    <!-- 01 謝宛倫 -->
-    <tr class="player-row" data-index="0">
-      <td class="col-num"><div class="player-num">01</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(0)">謝宛倫</button></td>
-      <td id="score_0" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(0)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_0" onclick="deletePlayer(0)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_0">0</span></span>
-          <span>last:<span id="last_0">00:00:000</span></span>
-          <span>avg:<span id="avg_0">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 02 廖崇亦 -->
-    <tr class="player-row" data-index="1">
-      <td class="col-num"><div class="player-num">02</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(1)">廖崇亦</button></td>
-      <td id="score_1" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(1)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_1" onclick="deletePlayer(1)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_1">0</span></span>
-          <span>last:<span id="last_1">00:00:000</span></span>
-          <span>avg:<span id="avg_1">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 03 王慎安 -->
-    <tr class="player-row" data-index="2">
-      <td class="col-num"><div class="player-num">03</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(2)">王慎安</button></td>
-      <td id="score_2" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(2)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_2" onclick="deletePlayer(2)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_2">0</span></span>
-          <span>last:<span id="last_2">00:00:000</span></span>
-          <span>avg:<span id="avg_2">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 04 鄭閎允 -->
-    <tr class="player-row" data-index="3">
-      <td class="col-num"><div class="player-num">04</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(3)">鄭閎允</button></td>
-      <td id="score_3" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(3)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_3" onclick="deletePlayer(3)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_3">0</span></span>
-          <span>last:<span id="last_3">00:00:000</span></span>
-          <span>avg:<span id="avg_3">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 05 楊沁嶧 -->
-    <tr class="player-row" data-index="4">
-      <td class="col-num"><div class="player-num">05</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(4)">楊沁嶧</button></td>
-      <td id="score_4" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(4)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_4" onclick="deletePlayer(4)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_4">0</span></span>
-          <span>last:<span id="last_4">00:00:000</span></span>
-          <span>avg:<span id="avg_4">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 06 陳星睿 -->
-    <tr class="player-row" data-index="5">
-      <td class="col-num"><div class="player-num">06</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(5)">陳星睿</button></td>
-      <td id="score_5" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(5)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_5" onclick="deletePlayer(5)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_5">0</span></span>
-          <span>last:<span id="last_5">00:00:000</span></span>
-          <span>avg:<span id="avg_5">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 11 劉振嶺 -->
-    <tr class="player-row" data-index="6">
-      <td class="col-num"><div class="player-num">11</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(6)">劉振嶺</button></td>
-      <td id="score_6" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(6)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_6" onclick="deletePlayer(6)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_6">0</span></span>
-          <span>last:<span id="last_6">00:00:000</span></span>
-          <span>avg:<span id="avg_6">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 12 余泓霖 -->
-    <tr class="player-row" data-index="7">
-      <td class="col-num"><div class="player-num">12</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(7)">余泓霖</button></td>
-      <td id="score_7" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(7)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_7" onclick="deletePlayer(7)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_7">0</span></span>
-          <span>last:<span id="last_7">00:00:000</span></span>
-          <span>avg:<span id="avg_7">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 13 鄭閎升 -->
-    <tr class="player-row" data-index="8">
-      <td class="col-num"><div class="player-num">13</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(8)">鄭閎升</button></td>
-      <td id="score_8" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(8)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_8" onclick="deletePlayer(8)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_8">0</span></span>
-          <span>last:<span id="last_8">00:00:000</span></span>
-          <span>avg:<span id="avg_8">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 14 李棋勝 -->
-    <tr class="player-row" data-index="9">
-      <td class="col-num"><div class="player-num">14</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(9)">李棋勝</button></td>
-      <td id="score_9" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(9)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_9" onclick="deletePlayer(9)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_9">0</span></span>
-          <span>last:<span id="last_9">00:00:000</span></span>
-          <span>avg:<span id="avg_9">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 15 孫晨軒 -->
-    <tr class="player-row" data-index="10">
-      <td class="col-num"><div class="player-num">15</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(10)">孫晨軒</button></td>
-      <td id="score_10" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(10)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_10" onclick="deletePlayer(10)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_10">0</span></span>
-          <span>last:<span id="last_10">00:00:000</span></span>
-          <span>avg:<span id="avg_10">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 16 蔡沛諺 -->
-    <tr class="player-row" data-index="11">
-      <td class="col-num"><div class="player-num">16</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(11)">蔡沛諺</button></td>
-      <td id="score_11" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(11)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_11" onclick="deletePlayer(11)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_11">0</span></span>
-          <span>last:<span id="last_11">00:00:000</span></span>
-          <span>avg:<span id="avg_11">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 21 江武騏 -->
-    <tr class="player-row" data-index="12">
-      <td class="col-num"><div class="player-num">21</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(12)">江武騏</button></td>
-      <td id="score_12" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(12)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_12" onclick="deletePlayer(12)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_12">0</span></span>
-          <span>last:<span id="last_12">00:00:000</span></span>
-          <span>avg:<span id="avg_12">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 22 林冠宇 -->
-    <tr class="player-row" data-index="13">
-      <td class="col-num"><div class="player-num">22</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(13)">林冠宇</button></td>
-      <td id="score_13" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(13)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_13" onclick="deletePlayer(13)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_13">0</span></span>
-          <span>last:<span id="last_13">00:00:000</span></span>
-          <span>avg:<span id="avg_13">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
-    <!-- 23 王宇昌 -->
-    <tr class="player-row" data-index="14">
-      <td class="col-num"><div class="player-num">23</div></td>
-      <td><button class="btn-blue" onclick="tapPlayer(14)">王宇昌</button></td>
-      <td id="score_14" class="time-big">00:00:000</td>
-      <td><button class="btn-red" onclick="finishPlayer(14)">Finish</button></td>
-    </tr>
-    <tr class="sub-row">
-      <td class="col-num">
-        <div class="row-tools">
-          <div class="drag-handle">≡</div>
-          <button class="btn-del" id="del_14" onclick="deletePlayer(14)">刪</button>
-        </div>
-      </td>
-      <td colspan="3">
-        <div class="info-box">
-          <span>圈:<span id="lap_14">0</span></span>
-          <span>last:<span id="last_14">00:00:000</span></span>
-          <span>avg:<span id="avg_14">00:00:000</span></span>
-        </div>
-      </td>
-    </tr>
-
+    <tbody id="playersBody"></tbody>
   </table>
 </div>
 
-<div class="row" style="justify-content:space-between; margin-top:16px;">
-  <div></div>
+<div class="row row-wrap" style="justify-content:space-between; margin-top:16px;">
+  <div class="tool-group">
+    <button class="btn-red" id="resetBtn">重置</button>
+    <button class="btn-green" id="addPlayerBtn">新增選手</button>
+    <button class="btn-gray" id="undoBtn">Undo</button>
+  </div>
   <button class="btn-orange" id="captureScores">成績截圖</button>
 </div>
 
-<div class="row" style="margin-top:16px; margin-bottom:4px;">
+<div class="row row-wrap" style="margin-top:16px; margin-bottom:4px;">
   <h3 style="margin:0;">歷程記錄</h3>
-  <button class="btn-green" onclick="sortLog()">記錄排序</button>
-  <button class="btn-orange" onclick="captureLog()">記錄截圖</button>
+  <button class="btn-green" id="sortLogBtn">記錄排序</button>
+  <button class="btn-orange" id="captureLogBtn">記錄截圖</button>
+  <button class="btn-green" id="uploadBtn">上傳記錄</button>
 </div>
-
+<div id="status"></div>
 <table id="log"></table>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
-let players = [
-  { num:'01', name:'謝宛倫' },
-  { num:'02', name:'廖崇亦' },
-  { num:'03', name:'王慎安' },
-  { num:'04', name:'鄭閎允' },
-  { num:'05', name:'楊沁嶧' },
-  { num:'06', name:'陳星睿' },
-  { num:'11', name:'劉振嶺' },
-  { num:'12', name:'余泓霖' },
-  { num:'13', name:'鄭閎升' },
-  { num:'14', name:'李棋勝' },
-  { num:'15', name:'孫晨軒' },
-  { num:'16', name:'蔡沛諺' },
-  { num:'21', name:'江武騏' },
-  { num:'22', name:'林冠宇' },
-  { num:'23', name:'王宇昌' }
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx2vTGvJXVLdapYetS6xUgwvDXXXjiky-jdjUTwMMealEZEwIHIu9reLlizIzOqbbwl/exec";
+const STORAGE_KEY = "rollerski_laps_state_v2";
+
+const defaultPlayers = [
+  { num:"01", name:"謝宛倫" },
+  { num:"02", name:"廖崇亦" },
+  { num:"03", name:"王慎安" },
+  { num:"04", name:"鄭閎允" },
+  { num:"05", name:"楊沁嶧" },
+  { num:"06", name:"陳星睿" },
+  { num:"11", name:"劉振嶺" },
+  { num:"12", name:"余泓霖" },
+  { num:"13", name:"鄭閎升" },
+  { num:"14", name:"李棋勝" },
+  { num:"15", name:"孫晨軒" },
+  { num:"16", name:"蔡沛諺" },
+  { num:"21", name:"江武騏" },
+  { num:"22", name:"林冠宇" },
+  { num:"23", name:"王宇昌" },
+  { num:"24", name:"王宇宸" },
+  { num:"25", name:"黃友宏" },
+  { num:"26", name:"林書微" }
 ];
 
-let timers = {};
+let players = [];
 let logs = [];
+let nextPlayerId = 1;
+let nextLogId = 1;
+let latestLogId = null;
+let tickTimer = null;
+let draggingId = null;
+let logSortMode = "time";
+let isUploading = false;
 
-document.getElementById("today").value = new Date().toISOString().substring(0,10);
-
-function fmt(ms){
-  let m = Math.floor(ms / 60000);
-  let s = Math.floor((ms % 60000) / 1000);
-  let ms3 = ms % 1000;
-  return String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0') + ":" + String(ms3).padStart(3,'0');
+function newPlayer(num, name){
+  return {
+    id: nextPlayerId++,
+    num: String(num).trim(),
+    name: String(name).trim(),
+    start: null,
+    elapsed: 0,
+    laps: [],
+    running: false,
+    finished: false
+  };
 }
 
-function startTimer(i){
-  const p = players[i];
-  if (!p) return;
-  if(!timers[i]){
-    p.start = Date.now();
-    p.laps = [];
-    timers[i] = setInterval(()=>{
-      const el = document.getElementById("score_"+i);
-      if (el) el.innerText = fmt(Date.now() - p.start);
-    },10);
+function localDateInputValue(date = new Date()){
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
-    const delBtn = document.getElementById("del_"+i);
-    if (delBtn){
-      delBtn.disabled = true;
-      delBtn.style.opacity = "0.5";
+function localDateSlash(){
+  const raw = document.getElementById("today").value || localDateInputValue();
+  const parts = raw.split("-");
+  if (parts.length === 3) return `${Number(parts[0])}/${Number(parts[1])}/${Number(parts[2])}`;
+  return raw;
+}
+
+function localDateTimeValue(date = new Date()){
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
+}
+
+function fmt(ms){
+  const safe = Math.max(0, Math.floor(ms || 0));
+  const m = Math.floor(safe / 60000);
+  const s = Math.floor((safe % 60000) / 1000);
+  const ms3 = safe % 1000;
+  return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0") + ":" + String(ms3).padStart(3,"0");
+}
+
+function escapeHtml(value){
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getPlayer(id){
+  return players.find(p => p.id === id);
+}
+
+function currentElapsed(p){
+  if (!p) return 0;
+  if (p.running && p.start) return Date.now() - p.start;
+  return p.elapsed || 0;
+}
+
+function lastLapMs(p){
+  if (!p || !p.laps.length) return 0;
+  const last = p.laps[p.laps.length - 1];
+  const prev = p.laps.length > 1 ? p.laps[p.laps.length - 2] : 0;
+  return last - prev;
+}
+
+function avgLapMs(p){
+  if (!p || !p.laps.length) return 0;
+  return Math.floor(p.laps[p.laps.length - 1] / p.laps.length);
+}
+
+function setStatus(message){
+  document.getElementById("status").textContent = message || "";
+}
+
+function saveState(){
+  const state = {
+    meta: {
+      today: document.getElementById("today").value,
+      place: document.getElementById("place").value,
+      distance: document.getElementById("distance").value,
+      type: document.getElementById("type").value
+    },
+    players,
+    logs,
+    nextPlayerId,
+    nextLogId,
+    latestLogId,
+    logSortMode
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadState(){
+  const todayEl = document.getElementById("today");
+  todayEl.value = localDateInputValue();
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) throw new Error("no saved state");
+    const state = JSON.parse(raw);
+    if (!Array.isArray(state.players)) throw new Error("bad saved state");
+
+    players = state.players.map(p => ({
+      id: Number(p.id),
+      num: String(p.num || ""),
+      name: String(p.name || ""),
+      start: p.running && p.start ? Number(p.start) : null,
+      elapsed: Number(p.elapsed || 0),
+      laps: Array.isArray(p.laps) ? p.laps.map(Number).filter(n => !Number.isNaN(n)) : [],
+      running: Boolean(p.running),
+      finished: Boolean(p.finished)
+    }));
+    logs = Array.isArray(state.logs) ? state.logs : [];
+    nextPlayerId = Number(state.nextPlayerId || 0);
+    nextLogId = Number(state.nextLogId || 0);
+    latestLogId = state.latestLogId === undefined ? null : Number(state.latestLogId);
+    logSortMode = state.logSortMode || "time";
+
+    if (!nextPlayerId) nextPlayerId = Math.max(0, ...players.map(p => p.id || 0)) + 1;
+    if (!nextLogId) nextLogId = Math.max(0, ...logs.map(r => r.id || 0)) + 1;
+    if (!latestLogId && logs.length) latestLogId = logs[logs.length - 1].id;
+
+    defaultPlayers.forEach(defaultPlayer => {
+      const existing = players.find(p => p.num === defaultPlayer.num);
+      if (existing) {
+        existing.name = defaultPlayer.name;
+      } else {
+        players.push(newPlayer(defaultPlayer.num, defaultPlayer.name));
+      }
+    });
+
+    if (state.meta) {
+      todayEl.value = state.meta.today || localDateInputValue();
+      document.getElementById("place").value = state.meta.place ?? "大都會公園";
+      document.getElementById("distance").value = state.meta.distance ?? "";
+      document.getElementById("type").value = state.meta.type || "自由式";
     }
+  } catch (err) {
+    players = defaultPlayers.map(p => newPlayer(p.num, p.name));
+    logs = [];
+    nextLogId = 1;
+    latestLogId = null;
+    logSortMode = "time";
   }
 }
 
-function tapPlayer(i){
-  const p = players[i];
-  if(!p) return;
-  if(!timers[i]){ startTimer(i); return; }
+function renderPlayers(){
+  const tbody = document.getElementById("playersBody");
+  tbody.innerHTML = "";
 
-  let now = Date.now() - p.start;
-  let lapCount = p.laps.length + 1;
-  let last = lapCount === 1 ? now : now - p.laps[p.laps.length - 1];
-  p.laps.push(now);
+  players.forEach(p => {
+    const elapsed = currentElapsed(p);
+    const nameClass = p.finished ? "btn-finished" : (p.running ? "btn-started" : "btn-blue");
+    const nameTitle = p.finished ? "已完成" : (p.running ? "計時中" : "尚未開始");
+    const canDelete = !p.running && !p.finished && p.laps.length === 0;
 
-  const lapEl = document.getElementById("lap_"+i);
-  const lastEl = document.getElementById("last_"+i);
-  const avgEl = document.getElementById("avg_"+i);
-  if (lapEl) lapEl.innerText = lapCount;
-  if (lastEl) lastEl.innerText = fmt(last);
-  if (avgEl) avgEl.innerText = fmt(Math.floor(now / lapCount));
+    const mainRow = document.createElement("tr");
+    mainRow.className = "player-row";
+    mainRow.dataset.id = String(p.id);
+    mainRow.innerHTML = `
+      <td class="col-num"><div class="player-num">${escapeHtml(p.num)}</div></td>
+      <td class="col-name"><button class="${nameClass}" data-action="tap" data-id="${p.id}" ${p.finished ? "disabled" : ""}>${escapeHtml(p.name)}</button></td>
+      <td class="col-score time-big" id="score_${p.id}">${fmt(elapsed)}</td>
+      <td class="col-finish"><button class="btn-red" data-action="finish" data-id="${p.id}" ${(!p.running || p.finished) ? "disabled" : ""}>Finish</button></td>
+    `;
 
-  logs.push({ num:p.num, name:p.name, lap:lapCount, last:fmt(last), total:fmt(now) });
-  renderLog();
-}
+    const subRow = document.createElement("tr");
+    subRow.className = "sub-row";
+    subRow.dataset.id = String(p.id);
+    subRow.innerHTML = `
+      <td class="col-num">
+        <div class="row-tools">
+          <div class="drag-handle" data-id="${p.id}" title="拖曳排序">≡</div>
+          <button class="btn-del btn-gray" data-action="delete" data-id="${p.id}" ${canDelete ? "" : "disabled"}>Del</button>
+        </div>
+      </td>
+      <td colspan="3">
+        <div class="info-box">
+          <span>Laps: <span>${p.laps.length}</span></span>
+          <span>last:<span>${fmt(lastLapMs(p))}</span></span>
+          <span>avg:<span>${fmt(avgLapMs(p))}</span></span>
+          <span>${nameTitle}</span>
+        </div>
+      </td>
+    `;
 
-function finishPlayer(i){
-  const p = players[i];
-  if(!p || !timers[i]) return;
-
-  clearInterval(timers[i]);
-  timers[i] = null;
-
-  let now = Date.now() - p.start;
-  let lapCount = p.laps.length + 1;
-  let last = lapCount === 1 ? now : now - p.laps[p.laps.length - 1];
-  p.laps.push(now);
-
-  const lapEl = document.getElementById("lap_"+i);
-  const lastEl = document.getElementById("last_"+i);
-  const avgEl = document.getElementById("avg_"+i);
-  const scoreEl = document.getElementById("score_"+i);
-
-  if (lapEl) lapEl.innerText = lapCount;
-  if (lastEl) lastEl.innerText = fmt(last);
-  if (avgEl) avgEl.innerText = fmt(Math.floor(now / lapCount));
-  if (scoreEl) scoreEl.innerText = fmt(now);
-
-  logs.push({ num:p.num, name:p.name, lap:lapCount, last:fmt(last), total:fmt(now) });
-  renderLog();
+    tbody.appendChild(mainRow);
+    tbody.appendChild(subRow);
+  });
 }
 
 function renderLog(){
   const tb = document.getElementById("log");
   tb.innerHTML = "<tr><th>編號</th><th>姓名</th><th>圈</th><th>單圈</th><th>累計</th></tr>";
-  logs.forEach(r=>{
+
+  getDisplayLogs().forEach(r => {
     const tr = document.createElement("tr");
-    tr.innerHTML =
-      `<td>${r.num}</td>
-       <td>${r.name}</td>
-       <td>${r.lap}</td>
-       <td>${r.last}</td>
-       <td>${r.total}</td>`;
+    if (r.id === latestLogId) tr.className = "latest-log";
+    const numClass = r.uploaded ? "uploaded-num" : (r.uploadFailed ? "upload-failed-num" : "");
+    tr.innerHTML = `
+      <td class="${numClass}">${escapeHtml(r.num)}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.lap)}</td>
+      <td>${escapeHtml(r.last)}</td>
+      <td>${escapeHtml(r.total)}</td>
+    `;
     tb.appendChild(tr);
   });
+
+  const legendRow = document.createElement("tr");
+  legendRow.innerHTML = `
+    <td colspan="5" style="text-align:left; padding-left:6px;">
+      <span><span class="legend-swatch legend-uploaded"></span>已上傳</span>
+      <span style="margin-left:12px;"><span class="legend-swatch legend-failed"></span>上傳失敗</span>
+    </td>
+  `;
+  tb.appendChild(legendRow);
+
+  document.getElementById("undoBtn").disabled = logs.length === 0;
+  document.getElementById("uploadBtn").disabled = isUploading || logs.length === 0;
 }
 
-function sortLog(){
-  logs.sort((a, b) => {
-    const na = parseInt(a.num, 10);
-    const nb = parseInt(b.num, 10);
-    if (na !== nb) return na - nb;
-    return a.lap - b.lap;
-  });
+function getDisplayLogs(){
+  const rows = [...logs];
+  if (logSortMode === "number") {
+    rows.sort((a, b) => {
+      const na = parseInt(a.num, 10);
+      const nb = parseInt(b.num, 10);
+      if (na !== nb) return na - nb;
+      return Number(a.lap) - Number(b.lap);
+    });
+  }
+  return rows;
+}
+
+function renderAll(){
+  renderPlayers();
   renderLog();
 }
 
-function captureLog(){
-  const headerRow = document.querySelector('#scoreArea .row'); // 上面那排 today / place / distance / type
-  const logTable  = document.getElementById('log');            // 歷程記錄表
+function updateRunningScores(){
+  players.forEach(p => {
+    if (!p.running) return;
+    const el = document.getElementById("score_" + p.id);
+    if (el) el.textContent = fmt(currentElapsed(p));
+  });
+}
 
-  if (!headerRow || !logTable) return;
+function ensureTickTimer(){
+  if (tickTimer) clearInterval(tickTimer);
+  if (players.some(p => p.running)) {
+    tickTimer = setInterval(updateRunningScores, 30);
+  } else {
+    tickTimer = null;
+  }
+}
 
-  // 建一個離畫面很遠的容器，專門拿來截圖
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '-10000px';
-  wrapper.style.top = '0';
-  wrapper.style.padding = '10px';
-  wrapper.style.backgroundColor = '#ffffff';
-  wrapper.style.boxSizing = 'border-box';
+function addLapRecord(p, elapsed, kind){
+  const lapCount = p.laps.length + 1;
+  const last = lapCount === 1 ? elapsed : elapsed - p.laps[p.laps.length - 1];
+  p.laps.push(elapsed);
 
-  // 把「上面那排輸入欄位」和「log 表格」都複製進來
-  wrapper.innerHTML = `
-    <div id="logHeaderClone">
-      ${headerRow.outerHTML}
-    </div>
-    ${logTable.outerHTML}
-  `;
+  const record = {
+    id: nextLogId++,
+    playerId: p.id,
+    num: p.num,
+    name: p.name,
+    lap: lapCount,
+    last: fmt(last),
+    total: fmt(elapsed),
+    kind,
+    uploaded: false,
+    uploadFailed: false,
+    uploadError: ""
+  };
+  logs.push(record);
+  latestLogId = record.id;
+}
 
-  document.body.appendChild(wrapper);
+function tapPlayer(id){
+  if (navigator.vibrate) navigator.vibrate(50);
 
-  // 同步輸入欄位的值（日期、地點=山水綠公園、距離、泳式）
-  const origInputs  = headerRow.querySelectorAll('input, select');
-  const cloneHeader = wrapper.querySelector('#logHeaderClone');
-  const cloneInputs = cloneHeader.querySelectorAll('input, select');
+  const p = getPlayer(id);
+  if (!p || p.finished) return;
 
+  if (!p.running) {
+    p.start = Date.now() - (p.elapsed || 0);
+    p.running = true;
+    setStatus(`${p.num} ${p.name} 開始計時`);
+    renderAll();
+    ensureTickTimer();
+    saveState();
+    return;
+  }
+
+  const elapsed = currentElapsed(p);
+  p.elapsed = elapsed;
+  addLapRecord(p, elapsed, "lap");
+  setStatus(`${p.num} ${p.name} 已記錄第 ${p.laps.length} 圈`);
+  renderAll();
+  saveState();
+}
+
+function finishPlayer(id){
+  const p = getPlayer(id);
+  if (!p || !p.running || p.finished) return;
+
+  const elapsed = currentElapsed(p);
+  p.elapsed = elapsed;
+  p.running = false;
+  p.finished = true;
+  p.start = null;
+  addLapRecord(p, elapsed, "finish");
+  setStatus(`${p.num} ${p.name} 已完成`);
+  renderAll();
+  ensureTickTimer();
+  saveState();
+}
+
+function undoLast(){
+  const targetIndex = logs.findIndex(r => r.id === latestLogId);
+  const lastLog = targetIndex >= 0 ? logs.splice(targetIndex, 1)[0] : logs.pop();
+  if (!lastLog) return;
+
+  const p = getPlayer(lastLog.playerId);
+  if (p && p.laps.length > 0) {
+    p.laps.pop();
+    p.finished = false;
+    if (lastLog.kind === "finish") {
+      p.running = true;
+      p.elapsed = p.laps.length ? p.laps[p.laps.length - 1] : 0;
+      p.start = Date.now() - p.elapsed;
+    } else if (p.running) {
+      p.elapsed = currentElapsed(p);
+    } else {
+      p.elapsed = p.laps.length ? p.laps[p.laps.length - 1] : 0;
+      p.start = null;
+    }
+  }
+
+  latestLogId = logs.length ? logs[logs.length - 1].id : null;
+  setStatus(`已撤銷 ${lastLog.num} ${lastLog.name} 第 ${lastLog.lap} 圈`);
+  renderAll();
+  ensureTickTimer();
+  saveState();
+}
+
+function addPlayer(){
+  const num = prompt("請輸入選手編號：");
+  if (!num || !num.trim()) return;
+  const cleanNum = num.trim();
+  if (players.some(p => p.num === cleanNum)) {
+    setStatus(`編號 ${cleanNum} 已存在，未新增選手`);
+    return;
+  }
+
+  const name = prompt("請輸入選手姓名：");
+  if (!name || !name.trim()) return;
+
+  players.push(newPlayer(cleanNum, name));
+  setStatus(`已新增 ${cleanNum} ${name.trim()}`);
+  renderAll();
+  saveState();
+}
+
+function resetRace(){
+  if (!confirm("確定 重置畫面嗎？ 歷程記錄將會清空，所有選手會回到尚未開始狀態。")) return;
+
+  players.forEach(p => {
+    p.start = null;
+    p.elapsed = 0;
+    p.laps = [];
+    p.running = false;
+    p.finished = false;
+  });
+  logs = [];
+  latestLogId = null;
+  logSortMode = "time";
+  document.getElementById("today").value = localDateInputValue();
+  setStatus("已重置完成，所有選手回到尚未開始狀態");
+  renderAll();
+  ensureTickTimer();
+  saveState();
+}
+
+function deletePlayer(id){
+  const p = getPlayer(id);
+  if (!p) return;
+  if (p.running || p.finished || p.laps.length > 0) {
+    alert("此選手已開始或已有記錄，不能刪除。");
+    return;
+  }
+  if (!confirm(`確定刪除 ${p.num} ${p.name}？`)) return;
+
+  players = players.filter(item => item.id !== id);
+  logs = logs.filter(r => r.playerId !== id);
+  setStatus(`已刪除 ${p.num} ${p.name}`);
+  renderAll();
+  saveState();
+}
+
+function sortLog(){
+  logSortMode = "number";
+  setStatus("歷程記錄已依編號、圈數排序");
+  renderLog();
+  saveState();
+}
+
+async function uploadResults(){
+  if (isUploading) return;
+  if (!logs.length) {
+    setStatus("目前沒有記錄可上傳");
+    return;
+  }
+
+  const pending = logs.filter(r => !r.uploaded);
+  if (!pending.length) {
+    setStatus("所有記錄都已上傳");
+    return;
+  }
+
+  const uploadBtn = document.getElementById("uploadBtn");
+  isUploading = true;
+  uploadBtn.disabled = true;
+  setStatus(`上傳中：0 / ${pending.length}`);
+
+  let success = 0;
+  let failed = 0;
+  for (const r of pending) {
+    try {
+      const uploadDateTime = localDateTimeValue();
+      const formData = new FormData();
+      formData.append("sheet", "laps");
+      formData.append("num", r.num);
+      formData.append("name", r.name);
+      formData.append("lap", r.lap);
+      formData.append("last", r.last);
+      formData.append("total", r.total);
+      formData.append("uploadDateTime", uploadDateTime);
+
+      formData.append("編號", r.num);
+      formData.append("姓名", r.name);
+      formData.append("圈", r.lap);
+      formData.append("單圈", r.last);
+      formData.append("累計", r.total);
+      formData.append("上傳日期時間", uploadDateTime);
+
+      const response = await fetch(GAS_URL, { method:"POST", body:formData });
+      const resultText = await response.text();
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      if (resultText.includes("❌") || resultText.includes("錯誤")) {
+        throw new Error(resultText);
+      }
+
+      r.uploaded = true;
+      r.uploadFailed = false;
+      r.uploadError = "";
+      r.uploadDateTime = uploadDateTime;
+      success++;
+      setStatus(`上傳中：${success} / ${pending.length}`);
+      renderLog();
+      saveState();
+    } catch (err) {
+      r.uploaded = false;
+      r.uploadFailed = true;
+      r.uploadError = err.message || String(err);
+      failed++;
+      setStatus(`上傳中：成功 ${success} 筆，失敗 ${failed} 筆`);
+      renderLog();
+      saveState();
+    }
+  }
+
+  isUploading = false;
+  setStatus(`上傳完成：成功 ${success} 筆，失敗 ${failed} 筆`);
+  renderLog();
+  saveState();
+}
+
+function copyControlValues(original, clone){
+  const origInputs = original.querySelectorAll("input, select");
+  const cloneInputs = clone.querySelectorAll("input, select");
   for (let i = 0; i < origInputs.length; i++) {
     cloneInputs[i].value = origInputs[i].value;
     if (origInputs[i].disabled) cloneInputs[i].disabled = true;
   }
-
-  // 對這個 wrapper 做截圖（包含上面那排 + log 表）
-  html2canvas(wrapper, {
-    scale: 2,
-    backgroundColor: "#ffffff"
-  }).then(canvas => {
-    document.body.removeChild(wrapper);
-    const w = window.open("");
-    w.document.write(`<img src="${canvas.toDataURL()}" style="max-width:100%;">`);
-  });
 }
 
-/* 成績截圖：複製 scoreArea，帶入 input/select 的值，並暫時隱藏 row-tools */
-document.getElementById("captureScores").addEventListener("click", () => {
-  const original = document.getElementById("scoreArea");
+function assertHtml2Canvas(){
+  if (typeof window.html2canvas !== "function") {
+    alert("截圖功能無法使用：html2canvas 尚未載入。請確認網路可連到 CDN 後再試一次。");
+    return false;
+  }
+  return true;
+}
 
+function openCanvas(canvas){
+  const w = window.open("");
+  if (!w) {
+    alert("瀏覽器封鎖了新視窗，請允許彈出視窗後再截圖。");
+    return;
+  }
+  w.document.write(`<img src="${canvas.toDataURL()}" style="max-width:100%;">`);
+}
+
+function captureLog(){
+  if (!assertHtml2Canvas()) return;
+
+  const headerRow = document.querySelector("#raceHeader");
+  const logTable = document.getElementById("log");
+  if (!headerRow || !logTable) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed";
+  wrapper.style.left = "-10000px";
+  wrapper.style.top = "0";
+  wrapper.style.padding = "10px";
+  wrapper.style.backgroundColor = "#ffffff";
+  wrapper.style.boxSizing = "border-box";
+  wrapper.innerHTML = `
+    <div id="logHeaderClone">${headerRow.outerHTML}</div>
+    ${logTable.outerHTML}
+  `;
+
+  document.body.appendChild(wrapper);
+  copyControlValues(headerRow, wrapper.querySelector("#logHeaderClone"));
+
+  html2canvas(wrapper, { scale:2, backgroundColor:"#ffffff" })
+    .then(canvas => openCanvas(canvas))
+    .catch(err => alert("記錄截圖失敗：" + err.message))
+    .finally(() => document.body.removeChild(wrapper));
+}
+
+function captureScores(){
+  if (!assertHtml2Canvas()) return;
+
+  const original = document.getElementById("scoreArea");
   const wrapper = document.createElement("div");
   wrapper.style.position = "fixed";
   wrapper.style.left = "-10000px";
@@ -658,26 +754,16 @@ document.getElementById("captureScores").addEventListener("click", () => {
   wrapper.style.padding = "10px 10px 10px 30px";
   wrapper.style.backgroundColor = "#ffffff";
   wrapper.style.boxSizing = "border-box";
-
   wrapper.innerHTML = original.outerHTML;
+
   document.body.appendChild(wrapper);
-
   const clonedScoreArea = wrapper.querySelector("#scoreArea");
-  const origInputs = original.querySelectorAll("input, select");
-  const cloneInputs = clonedScoreArea.querySelectorAll("input, select");
+  copyControlValues(original, clonedScoreArea);
 
-  for (let i = 0; i < origInputs.length; i++) {
-    cloneInputs[i].value = origInputs[i].value;
-    if (origInputs[i].disabled) cloneInputs[i].disabled = true;
-  }
-
-  const tools = clonedScoreArea.querySelectorAll(".row-tools");
-  tools.forEach(el => {
+  clonedScoreArea.querySelectorAll(".row-tools").forEach(el => {
     el.style.visibility = "hidden";
   });
-
-  const clonedNums = clonedScoreArea.querySelectorAll(".player-num");
-  clonedNums.forEach(el => {
+  clonedScoreArea.querySelectorAll(".player-num").forEach(el => {
     el.style.display = "flex";
     el.style.alignItems = "center";
     el.style.justifyContent = "center";
@@ -687,119 +773,108 @@ document.getElementById("captureScores").addEventListener("click", () => {
   });
 
   html2canvas(clonedScoreArea, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    scrollX: 0,
-    scrollY: 0
-  }).then(canvas => {
-    tools.forEach(el => {
-      el.style.visibility = "visible";
-    });
-    document.body.removeChild(wrapper);
-    const w = window.open("");
-    w.document.write(`<img src="${canvas.toDataURL()}" style="max-width:100%;">`);
-  });
-});
-
-/* 刪除選手（兩列一起移除，開始計時後不可刪除，並移除相關紀錄） */
-function deletePlayer(i){
-  const p = players[i];
-  if (!p) return;
-
-  if (p.start !== undefined) return;
-
-  if (timers[i]) {
-    clearInterval(timers[i]);
-    timers[i] = null;
-  }
-
-  const table = document.getElementById("players");
-  const mainRow = table.querySelector(`tr.player-row[data-index="${i}"]`);
-  if (mainRow) {
-    const subRow = mainRow.nextElementSibling;
-    mainRow.remove();
-    if (subRow && subRow.classList.contains("sub-row")) subRow.remove();
-  }
-
-  logs = logs.filter(r => r.num !== p.num);
-  players[i] = null;
-  renderLog();
+    scale:2,
+    backgroundColor:"#ffffff",
+    scrollX:0,
+    scrollY:0
+  })
+    .then(canvas => openCanvas(canvas))
+    .catch(err => alert("成績截圖失敗：" + err.message))
+    .finally(() => document.body.removeChild(wrapper));
 }
 
-/* 手機 + 電腦拖曳排序（按住第二列的拖曳圖示） */
-(function setupDrag(){
+function setupDrag(){
   const table = document.getElementById("players");
-  let draggingRow = null;
 
-  function onPointerDown(e){
+  table.addEventListener("pointerdown", e => {
     const handle = e.target.closest(".drag-handle");
     if (!handle) return;
 
-    const subRow = handle.closest("tr.sub-row");
-    if (!subRow) return;
-
-    const mainRow = subRow.previousElementSibling;
-    if (!mainRow || !mainRow.classList.contains("player-row")) return;
-
-    draggingRow = mainRow;
-    draggingRow.classList.add("dragging");
+    draggingId = Number(handle.dataset.id);
+    const mainRow = table.querySelector(`tr.player-row[data-id="${draggingId}"]`);
+    if (mainRow) mainRow.classList.add("dragging");
 
     document.addEventListener("pointermove", onPointerMove);
     document.addEventListener("pointerup", onPointerUp);
-
     e.preventDefault();
-  }
+  });
 
   function onPointerMove(e){
-    if (!draggingRow) return;
+    if (!draggingId) return;
 
     const tableRect = table.getBoundingClientRect();
     const y = e.clientY - tableRect.top;
+    const rows = [...table.querySelectorAll("tr.player-row")].filter(row => Number(row.dataset.id) !== draggingId);
 
-    const rows = [...table.querySelectorAll("tr.player-row")].filter(r => r !== draggingRow);
-    const tbody = table.tBodies[0] || table;
-    const subRow = draggingRow.nextElementSibling;
-
-    for (let row of rows){
+    let targetId = null;
+    for (const row of rows) {
       const rect = row.getBoundingClientRect();
-      const rowY = rect.top - tableRect.top;
-      const middle = rowY + rect.height / 2;
-
-      if (y < middle){
-        tbody.insertBefore(draggingRow, row);
-        tbody.insertBefore(subRow, draggingRow.nextSibling);
-        return;
+      const middle = rect.top - tableRect.top + rect.height / 2;
+      if (y < middle) {
+        targetId = Number(row.dataset.id);
+        break;
       }
     }
 
-    tbody.appendChild(draggingRow);
-    tbody.appendChild(subRow);
+    const fromIndex = players.findIndex(p => p.id === draggingId);
+    if (fromIndex < 0) return;
+
+    const moved = players.splice(fromIndex, 1)[0];
+    let toIndex = targetId ? players.findIndex(p => p.id === targetId) : players.length;
+    if (toIndex < 0) toIndex = players.length;
+    players.splice(toIndex, 0, moved);
+
+    renderPlayers();
+    const mainRow = table.querySelector(`tr.player-row[data-id="${draggingId}"]`);
+    if (mainRow) mainRow.classList.add("dragging");
   }
 
   function onPointerUp(){
-    if (!draggingRow) return;
-    draggingRow.classList.remove("dragging");
-    draggingRow = null;
+    if (!draggingId) return;
+    draggingId = null;
     document.removeEventListener("pointermove", onPointerMove);
     document.removeEventListener("pointerup", onPointerUp);
+    renderPlayers();
+    saveState();
   }
+}
 
-  table.addEventListener("pointerdown", onPointerDown);
-})();
+document.getElementById("players").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
 
-// 離開或重整頁面前提醒「資料會遺失」
+  const id = Number(btn.dataset.id);
+  if (btn.dataset.action === "tap") tapPlayer(id);
+  if (btn.dataset.action === "finish") finishPlayer(id);
+  if (btn.dataset.action === "delete") deletePlayer(id);
+});
+
+document.getElementById("addPlayerBtn").addEventListener("click", addPlayer);
+document.getElementById("resetBtn").addEventListener("click", resetRace);
+document.getElementById("undoBtn").addEventListener("click", undoLast);
+document.getElementById("uploadBtn").addEventListener("click", uploadResults);
+document.getElementById("sortLogBtn").addEventListener("click", sortLog);
+document.getElementById("captureLogBtn").addEventListener("click", captureLog);
+document.getElementById("captureScores").addEventListener("click", captureScores);
+
+document.querySelectorAll("#raceHeader input, #raceHeader select").forEach(el => {
+  el.addEventListener("input", saveState);
+  el.addEventListener("change", saveState);
+});
+
 window.addEventListener("beforeunload", function (e) {
-  // 若沒有資料就不提醒：例如 logs 還是空的就放行
-  if (!logs || logs.length === 0) return;
-
-  const message = "重新整理或離開本頁，資料會遺失。確定要離開嗎？";
+  if (!players.some(p => p.running)) return;
+  const message = "仍有選手正在計時，確定要離開嗎？";
   e.preventDefault();
-  e.returnValue = message;  // 部分瀏覽器會忽略自訂文字，但一定要設這行才會跳出提示
+  e.returnValue = message;
   return message;
 });
 
-
-renderLog();
+loadState();
+saveState();
+renderAll();
+setupDrag();
+ensureTickTimer();
 </script>
 
 </body>
