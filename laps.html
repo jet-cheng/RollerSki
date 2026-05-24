@@ -117,6 +117,12 @@
     padding:5px 3px;
   }
 
+  #log th:last-child,
+  #log td:last-child {
+    white-space:nowrap;
+    font-size:14px;
+  }
+
   #log tr.latest-log td { background:#fff4b8; }
   #log td.uploaded-num { background:#b7e4c7; }
   #log tr.latest-log td.uploaded-num { background:#8fd19e; }
@@ -203,6 +209,7 @@ let tickTimer = null;
 let draggingId = null;
 let logSortMode = "time";
 let isUploading = false;
+const ZERO_TIME = "00:00:000";
 
 function newPlayer(num, name){
   return {
@@ -260,6 +267,13 @@ function escapeHtml(value){
 
 function getPlayer(id){
   return players.find(p => p.id === id);
+}
+
+function comparePlayerNumber(a, b){
+  const na = parseInt(a.num, 10);
+  const nb = parseInt(b.num, 10);
+  if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+  return String(a.num).localeCompare(String(b.num), "zh-Hant", { numeric: true });
 }
 
 function currentElapsed(p){
@@ -322,7 +336,10 @@ function loadState(){
       running: Boolean(p.running),
       finished: Boolean(p.finished)
     }));
-    logs = Array.isArray(state.logs) ? state.logs : [];
+    logs = Array.isArray(state.logs) ? state.logs.map(r => ({
+      ...r,
+      recordDateTime: r.recordDateTime || ""
+    })) : [];
     nextPlayerId = Number(state.nextPlayerId || 0);
     nextLogId = Number(state.nextLogId || 0);
     latestLogId = state.latestLogId === undefined ? null : Number(state.latestLogId);
@@ -403,7 +420,7 @@ function renderPlayers(){
 
 function renderLog(){
   const tb = document.getElementById("log");
-  tb.innerHTML = "<tr><th>編號</th><th>姓名</th><th>圈</th><th>單圈</th><th>累計</th></tr>";
+  tb.innerHTML = "<tr><th>編號</th><th>姓名</th><th>圈</th><th>單圈</th><th>累計</th><th>紀錄日期時間</th></tr>";
 
   getDisplayLogs().forEach(r => {
     const tr = document.createElement("tr");
@@ -415,13 +432,14 @@ function renderLog(){
       <td>${escapeHtml(r.lap)}</td>
       <td>${escapeHtml(r.last)}</td>
       <td>${escapeHtml(r.total)}</td>
+      <td>${escapeHtml(r.recordDateTime || "")}</td>
     `;
     tb.appendChild(tr);
   });
 
   const legendRow = document.createElement("tr");
   legendRow.innerHTML = `
-    <td colspan="5" style="text-align:left; padding-left:6px;">
+    <td colspan="6" style="text-align:left; padding-left:6px;">
       <span><span class="legend-swatch legend-uploaded"></span>已上傳</span>
       <span style="margin-left:12px;"><span class="legend-swatch legend-failed"></span>上傳失敗</span>
     </td>
@@ -481,6 +499,26 @@ function addLapRecord(p, elapsed, kind){
     last: fmt(last),
     total: fmt(elapsed),
     kind,
+    recordDateTime: localDateTimeValue(),
+    uploaded: false,
+    uploadFailed: false,
+    uploadError: ""
+  };
+  logs.push(record);
+  latestLogId = record.id;
+}
+
+function addStartRecord(p){
+  const record = {
+    id: nextLogId++,
+    playerId: p.id,
+    num: p.num,
+    name: p.name,
+    lap: 0,
+    last: ZERO_TIME,
+    total: ZERO_TIME,
+    kind: "start",
+    recordDateTime: localDateTimeValue(),
     uploaded: false,
     uploadFailed: false,
     uploadError: ""
@@ -498,6 +536,7 @@ function tapPlayer(id){
   if (!p.running) {
     p.start = Date.now() - (p.elapsed || 0);
     p.running = true;
+    addStartRecord(p);
     setStatus(`${p.num} ${p.name} 開始計時`);
     renderAll();
     ensureTickTimer();
@@ -535,18 +574,25 @@ function undoLast(){
   if (!lastLog) return;
 
   const p = getPlayer(lastLog.playerId);
-  if (p && p.laps.length > 0) {
-    p.laps.pop();
-    p.finished = false;
-    if (lastLog.kind === "finish") {
-      p.running = true;
-      p.elapsed = p.laps.length ? p.laps[p.laps.length - 1] : 0;
-      p.start = Date.now() - p.elapsed;
-    } else if (p.running) {
-      p.elapsed = currentElapsed(p);
-    } else {
-      p.elapsed = p.laps.length ? p.laps[p.laps.length - 1] : 0;
+  if (p) {
+    if (lastLog.kind === "start") {
+      p.running = false;
+      p.finished = false;
       p.start = null;
+      p.elapsed = 0;
+    } else if (p.laps.length > 0) {
+      p.laps.pop();
+      p.finished = false;
+      if (lastLog.kind === "finish") {
+        p.running = true;
+        p.elapsed = p.laps.length ? p.laps[p.laps.length - 1] : 0;
+        p.start = Date.now() - p.elapsed;
+      } else if (p.running) {
+        p.elapsed = currentElapsed(p);
+      } else {
+        p.elapsed = p.laps.length ? p.laps[p.laps.length - 1] : 0;
+        p.start = null;
+      }
     }
   }
 
@@ -588,6 +634,7 @@ function resetRace(){
   logs = [];
   latestLogId = null;
   logSortMode = "time";
+  players.sort(comparePlayerNumber);
   document.getElementById("today").value = localDateInputValue();
   setStatus("已重置完成，所有選手回到尚未開始狀態");
   renderAll();
@@ -641,6 +688,7 @@ async function uploadResults(){
   for (const r of pending) {
     try {
       const uploadDateTime = localDateTimeValue();
+      const recordDateTime = r.recordDateTime || uploadDateTime;
       const formData = new FormData();
       formData.append("sheet", "laps");
       formData.append("num", r.num);
@@ -648,6 +696,7 @@ async function uploadResults(){
       formData.append("lap", r.lap);
       formData.append("last", r.last);
       formData.append("total", r.total);
+      formData.append("recordDateTime", recordDateTime);
       formData.append("uploadDateTime", uploadDateTime);
 
       formData.append("編號", r.num);
@@ -655,6 +704,7 @@ async function uploadResults(){
       formData.append("圈", r.lap);
       formData.append("單圈", r.last);
       formData.append("累計", r.total);
+      formData.append("紀錄日期時間", recordDateTime);
       formData.append("上傳日期時間", uploadDateTime);
 
       const response = await fetch(GAS_URL, { method:"POST", body:formData });
@@ -667,6 +717,7 @@ async function uploadResults(){
       r.uploaded = true;
       r.uploadFailed = false;
       r.uploadError = "";
+      r.recordDateTime = recordDateTime;
       r.uploadDateTime = uploadDateTime;
       success++;
       setStatus(`上傳中：${success} / ${pending.length}`);
