@@ -38,6 +38,8 @@
   #selectBtn { display: block; margin: 10px 0; width: 180px; background: #ffb347; color: white; }
   #addBtn, #uploadBtn, #resetBtn { font-size: 18px; padding: 6px 12px; color: white; border: none; border-radius: 5px; width: 140px; height: 44px; }
   #addBtn, #uploadBtn { background: #2196f3; }
+  #uploadBtn.uploading { background: #fd7e14; color: white; }
+  #uploadBtn.uploading:disabled { opacity: 1; cursor: wait; }
   .legend-swatch { display:inline-block; width:18px; height:12px; border:1px solid #999; vertical-align:middle; margin-right:4px; }
   .legend-uploaded { background:#b7e4c7; }
   .legend-failed { background:#ffb3b3; }
@@ -250,6 +252,29 @@ function setSelectionLocked(locked) {
   });
 }
 
+function comparePlayerRowsByNumber(a, b) {
+  const aNum = a.cells[1].textContent.trim();
+  const bNum = b.cells[1].textContent.trim();
+  const na = parseInt(aNum, 10);
+  const nb = parseInt(bNum, 10);
+  if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+  return aNum.localeCompare(bNum, "zh-Hant", { numeric: true });
+}
+
+function sortPlayerListByNumber() {
+  const tbody = document.querySelector("#playerTable tbody");
+  Array.from(tbody.querySelectorAll("tr"))
+    .sort(comparePlayerRowsByNumber)
+    .forEach(row => tbody.appendChild(row));
+}
+
+function setUploadButtonUploading(uploading) {
+  const uploadBtn = document.getElementById("uploadBtn");
+  uploadBtn.disabled = uploading;
+  uploadBtn.classList.toggle("uploading", uploading);
+  uploadBtn.textContent = uploading ? "上傳中..." : "上傳資料";
+}
+
 function resetRace() {
   if (!confirm("確定重置？計時表會清空，選手清單會解除選取狀態。")) return;
   timers.forEach(timer => clearInterval(timer));
@@ -267,11 +292,12 @@ function resetRace() {
     checkbox.checked = false;
     checkbox.disabled = false;
   });
+  sortPlayerListByNumber();
   setSelectionLocked(false);
   const startBtn = document.getElementById("startBtn");
   startBtn.disabled = false;
   startBtn.style.background = "#ffb347";
-  document.getElementById("uploadBtn").disabled = false;
+  setUploadButtonUploading(false);
 }
 
 async function uploadResults() {
@@ -286,7 +312,7 @@ async function uploadResults() {
   }
 
   isUploading = true;
-  document.getElementById("uploadBtn").disabled = true;
+  setUploadButtonUploading(true);
   const today = new Date();
   const dateStr = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
   const existingResults = [];
@@ -354,7 +380,7 @@ async function uploadResults() {
   raceStarted = false;
   setSelectionLocked(false);
   isUploading = false;
-  document.getElementById("uploadBtn").disabled = false;
+  setUploadButtonUploading(false);
 }
 
 function statusClass(status) {
