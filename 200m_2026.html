@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Roller Ski Race Timing</title>
+<style>
+  body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; background: #f9f9f9; }
+  .section { border: 1px solid #ccc; margin: 8px; border-radius: 8px; background: white; }
+  .section h2 { background: #4caf50; color: white; margin: 0; padding: 10px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+  .player-title { flex-shrink: 0; }
+  .group-filters { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; font-size: 16px; }
+  .group-filters label { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .toggle-btn { background: none; border: none; color: white; font-size: 26px; height: 24px; line-height: 24px; display: flex; align-items: center; gap: 10px; }
+  .content { padding: 10px; display: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 32px; }
+  th, td { border: 1px solid #ddd; padding: 2px 8px; text-align: center; }
+  th { background: #f0f0f0; }
+  #playerTable th:nth-child(1), #playerTable td:nth-child(1) { width: 25%; }
+  #playerTable th:nth-child(2), #playerTable td:nth-child(2) { width: 25%; }
+  #playerTable th:nth-child(3), #playerTable td:nth-child(3) { width: 50%; }
+  #timerTable th:nth-child(1), #timerTable td:nth-child(1) { width: 10%; }
+  #timerTable th:nth-child(2), #timerTable td:nth-child(2) { width: 35%; }
+  #timerTable th:nth-child(3), #timerTable td:nth-child(3) { width: 30%; }
+  #timerTable th:nth-child(4), #timerTable td:nth-child(4) { width: 25%; }
+  input[type="checkbox"] { width: 16px; height: 16px; }
+  button { padding: 10px 20px; font-size: 24px; border: none; border-radius: 5px; margin: 5px; }
+  .btn-primary { background: #4caf50; color: white; }
+  .btn-secondary { background: #2196f3; color: white; }
+  .btn-finish { background: #ff5722; color: white; }
+  .btn-reset { background: #d9534f; color: white; }
+  .highlight { background-color: #ccffcc !important; }
+  .timing-row { background-color: #fff4b8; }
+  .finished-row { background-color: #ccffcc; }
+  .status-pending { background-color: #e0e0e0; }
+  .status-uploaded { background-color: #b7e4c7; }
+  .status-failed { background-color: #ffb3b3; }
+  .btn-group { display: flex; justify-content: center; }
+  .select-actions { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  #startBtn { display: block; margin: 0 auto 10px auto; width: 80%; background: #ffb347; }
+  #selectBtn { display: block; margin: 10px 0; width: 180px; background: #ffb347; color: white; }
+  #addBtn, #uploadBtn, #resetBtn { font-size: 18px; padding: 6px 12px; color: white; border: none; border-radius: 5px; width: 140px; height: 44px; }
+  #addBtn, #uploadBtn { background: #2196f3; }
+  #uploadBtn.uploading { background: #fd7e14; color: white; }
+  #uploadBtn.uploading:disabled { opacity: 1; cursor: wait; }
+  .legend-swatch { display:inline-block; width:18px; height:12px; border:1px solid #999; vertical-align:middle; margin-right:4px; }
+  .legend-uploaded { background:#b7e4c7; }
+  .legend-failed { background:#ffb3b3; }
+  .legend-pending { background:#e0e0e0; }
+  .banner { text-align:center; margin:6px 0; }
+  .banner img { width:70%; max-height:120px; object-fit:cover; border-radius:10px; }
+  @media (max-width: 600px) { table, th, td { font-size: 20px; } .section h2 { flex-wrap: wrap; gap: 8px; } .group-filters { width: 100%; justify-content: flex-start; } }
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <img src="200b.jpg" alt="Roller Ski Banner">
+</div>
+
+<div class="section">
+  <h2>
+    <span class="player-title">選手清單</span>
+    <span class="group-filters">
+      <label><input type="checkbox" class="group-filter" value="U10" checked onchange="updatePlayerGroupVisibility()">U10</label>
+      <label><input type="checkbox" class="group-filter" value="U12" checked onchange="updatePlayerGroupVisibility()">U12</label>
+      <label><input type="checkbox" class="group-filter" value="U14" checked onchange="updatePlayerGroupVisibility()">U14</label>
+      <label><input type="checkbox" class="group-filter" value="U16" checked onchange="updatePlayerGroupVisibility()">U16</label>
+      <label><input type="checkbox" class="group-filter" value="OPEN" checked onchange="updatePlayerGroupVisibility()">OPEN</label>
+    </span>
+    <span class="toggle-btn">
+      <button id="addBtn" onclick="addPlayer()">新增選手</button>
+      <button class="toggle-btn" onclick="toggleSection(this)">＋</button>
+    </span>
+  </h2>
+  <div class="content">
+    <table id="playerTable">
+      <thead>
+        <tr><th>選取</th><th>編號</th><th>選手姓名</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>121</td><td>藍121</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>122</td><td>藍122</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>123</td><td>藍123</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>124</td><td>藍124</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>125</td><td>藍125</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>126</td><td>藍126</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>127</td><td>藍127</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>128</td><td>藍128</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U10"></td><td>129</td><td>藍129</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>341</td><td>粉341</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>342</td><td>粉342</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>343</td><td>粉343</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>344</td><td>粉344</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>345</td><td>粉345</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>346</td><td>粉346</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>347</td><td>粉347</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U12"></td><td>348</td><td>粉348</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>349</td><td>粉349</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>350</td><td>粉350</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>351</td><td>粉351</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>352</td><td>粉352</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>353</td><td>粉353</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>354</td><td>粉354</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>355</td><td>粉355</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>356</td><td>粉356</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U14"></td><td>357</td><td>粉357</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>561</td><td>菊561</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>562</td><td>菊562</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>563</td><td>菊563</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>564</td><td>菊564</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>565</td><td>菊565</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>566</td><td>菊566</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>567</td><td>菊567</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>568</td><td>菊568</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>569</td><td>菊569</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>570</td><td>菊570</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="U16"></td><td>571</td><td>菊571</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>572</td><td>菊572</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>573</td><td>菊573</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>574</td><td>菊574</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>575</td><td>菊575</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>576</td><td>菊576</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>577</td><td>菊577</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>578</td><td>菊578</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>579</td><td>菊579</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>580</td><td>菊580</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>358</td><td>粉358</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>359</td><td>粉359</td></tr>
+        <tr><td><input type="checkbox"><input type="hidden" class="player-group" value="OPEN"></td><td>360</td><td>粉360</td></tr>
+      </tbody>
+    </table>
+    <div class="select-actions">
+      <button class="btn-primary" id="selectBtn" onclick="selectPlayers()">選取加入</button>
+      <button class="btn-reset" id="resetBtn" onclick="resetRace()">重置</button>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>
+    比賽計時
+    <span class="toggle-btn">
+      <label style="font-size:14px; color:white;">
+        <input type="checkbox" id="uploadCheck" checked style="width:18px; height:18px; vertical-align:middle; margin-right:2px;">
+      </label>
+      <button id="uploadBtn" onclick="uploadResults()">上傳資料</button>
+      <button class="toggle-btn" onclick="toggleSection(this)">－</button>
+    </span>
+  </h2>
+  <div class="content" style="display:block;">
+    <button class="btn-primary" id="startBtn" onclick="startTiming()">Start</button>
+    <table id="timerTable">
+      <thead>
+        <tr><th>編號</th><th>選手姓名</th><th>成績</th><th>Finish</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>比賽成績 <button class="toggle-btn" onclick="toggleSection(this)">＋</button></h2>
+  <div class="content">
+    <table id="resultTable">
+      <thead>
+        <tr><th>日期</th><th>編號</th><th>選手姓名</th><th>成績</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx2vTGvJXVLdapYetS6xUgwvDXXXjiky-jdjUTwMMealEZEwIHIu9reLlizIzOqbbwl/exec";
+const PLAYER_GROUPS = ["U10", "U12", "U14", "U16", "OPEN"];
+let startTime = null;
+let timers = [];
+let raceStarted = false;
+let isUploading = false;
+
+function toggleSection(btn) {
+  const content = btn.closest("h2").nextElementSibling;
+  const isShown = content.style.display === "block";
+  content.style.display = isShown ? "none" : "block";
+  btn.textContent = isShown ? "＋" : "－";
+}
+
+function updatePlayerGroupVisibility() {
+  const activeGroups = new Set(
+    Array.from(document.querySelectorAll(".group-filter"))
+      .filter(checkbox => checkbox.checked)
+      .map(checkbox => checkbox.value)
+  );
+  document.querySelectorAll("#playerTable tbody tr").forEach(row => {
+    const group = row.querySelector(".player-group")?.value || "";
+    const isVisible = !group || activeGroups.has(group);
+    row.hidden = !isVisible;
+    if (!isVisible) {
+      const checkbox = row.querySelector("input[type=checkbox]");
+      if (checkbox) checkbox.checked = false;
+    }
+  });
+}
+
+function addPlayer() {
+  if (raceStarted) {
+    alert("比賽已開始，請先 Reset 或上傳完成後再新增選手。");
+    return;
+  }
+  const number = prompt("請輸入選手編號：");
+  const name = prompt("請輸入選手姓名：");
+  if (!number || !name) return;
+  const cleanNumber = number.trim();
+  const cleanName = name.trim();
+  if (!cleanNumber || !cleanName) {
+    alert("選手編號與姓名不可空白。");
+    return;
+  }
+  const groupInput = prompt("請輸入選手組別：U10、U12、U14、U16、OPEN");
+  if (groupInput === null) return;
+  const playerGroup = groupInput.trim().toUpperCase();
+  if (!PLAYER_GROUPS.includes(playerGroup)) {
+    alert("組別必須是 U10、U12、U14、U16 或 OPEN。");
+    return;
+  }
+  const exists = Array.from(document.querySelectorAll("#playerTable tbody tr"))
+    .some(row => row.cells[1].textContent.trim() === cleanNumber);
+  if (exists) {
+    alert(`編號 ${cleanNumber} 已存在，未新增選手。`);
+    return;
+  }
+  const table = document.querySelector("#playerTable tbody");
+  const row = table.insertRow();
+  const selectCell = row.insertCell();
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  const groupField = document.createElement("input");
+  groupField.type = "hidden";
+  groupField.className = "player-group";
+  groupField.value = playerGroup;
+  selectCell.append(checkbox, groupField);
+  row.insertCell().textContent = cleanNumber;
+  row.insertCell().textContent = cleanName;
+  updatePlayerGroupVisibility();
+}
+
+function selectPlayers() {
+  if (raceStarted) {
+    alert("比賽已開始，不能再加入選手。");
+    return;
+  }
+  const playerRows = document.querySelectorAll("#playerTable tbody tr");
+  const timerTable = document.querySelector("#timerTable tbody");
+  const existingNums = new Set(
+    Array.from(timerTable.querySelectorAll("tr")).map(row => row.cells[0].textContent.trim())
+  );
+  playerRows.forEach(row => {
+    const checkbox = row.querySelector("input[type=checkbox]");
+    if (checkbox.checked) {
+      const num = row.cells[1].textContent;
+      const name = row.cells[2].textContent;
+      if (existingNums.has(num.trim())) {
+        checkbox.checked = false;
+        alert(`${num} ${name} 已在比賽計時中。`);
+        return;
+      }
+      row.cells[2].classList.add("highlight");
+      const newRow = timerTable.insertRow();
+      newRow.dataset.finished = "false";
+      newRow.dataset.uploadStatus = "pending";
+      newRow.innerHTML = `
+        <td>${num}</td>
+        <td>${name}</td>
+        <td class="time">00:00:000</td>
+        <td><button class="btn-finish" onclick="finishTime(this)" disabled>Finish</button></td>
+      `;
+      existingNums.add(num.trim());
+      checkbox.checked = false;
+    }
+  });
+}
+
+function startTiming() {
+  const startBtn = document.getElementById("startBtn");
+  if (startBtn.disabled) return;
+  const timerRows = Array.from(document.querySelectorAll("#timerTable tbody tr"));
+  if (timerRows.length === 0) {
+    alert("請先選取選手。");
+    return;
+  }
+  startBtn.style.background = "#cccccc";
+  startBtn.disabled = true;
+  raceStarted = true;
+  setSelectionLocked(true);
+  startTime = Date.now();
+  timers = [];
+  timerRows.forEach((row, index) => {
+    const timeCell = row.querySelector(".time");
+    const finishBtn = row.querySelector(".btn-finish");
+    if (finishBtn) finishBtn.disabled = false;
+    row.classList.add("timing-row");
+    timers[index] = setInterval(() => {
+      const diff = Date.now() - startTime;
+      timeCell.textContent = formatTime(diff);
+    }, 10);
+  });
+}
+
+function finishTime(btn) {
+  const row = btn.closest("tr");
+  const index = Array.from(row.parentNode.children).indexOf(row);
+  clearInterval(timers[index]);
+  row.dataset.finished = "true";
+  row.classList.remove("timing-row");
+  row.classList.add("finished-row");
+  btn.disabled = true;
+  btn.textContent = "Done";
+}
+
+function formatTime(ms) {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const ms3 = ms % 1000;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(ms3).padStart(3, '0')}`;
+}
+
+function setSelectionLocked(locked) {
+  document.getElementById("addBtn").disabled = locked;
+  document.getElementById("selectBtn").disabled = locked;
+  document.querySelectorAll("#playerTable input[type=checkbox]").forEach(cb => {
+    cb.disabled = locked;
+  });
+}
+
+function comparePlayerRowsByNumber(a, b) {
+  const aNum = a.cells[1].textContent.trim();
+  const bNum = b.cells[1].textContent.trim();
+  const na = parseInt(aNum, 10);
+  const nb = parseInt(bNum, 10);
+  if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+  return aNum.localeCompare(bNum, "zh-Hant", { numeric: true });
+}
+
+function sortPlayerListByNumber() {
+  const tbody = document.querySelector("#playerTable tbody");
+  Array.from(tbody.querySelectorAll("tr"))
+    .sort(comparePlayerRowsByNumber)
+    .forEach(row => tbody.appendChild(row));
+}
+
+function setUploadButtonUploading(uploading) {
+  const uploadBtn = document.getElementById("uploadBtn");
+  uploadBtn.disabled = uploading;
+  uploadBtn.classList.toggle("uploading", uploading);
+  uploadBtn.textContent = uploading ? "上傳中..." : "上傳資料";
+}
+
+function resetRace() {
+  if (!confirm("確定重置？計時表會清空，選手清單會解除選取狀態。")) return;
+  timers.forEach(timer => clearInterval(timer));
+  timers = [];
+  startTime = null;
+  raceStarted = false;
+  isUploading = false;
+  document.querySelector("#timerTable tbody").innerHTML = "";
+  const resultTableBody = document.querySelector("#resultTable tbody");
+  resultTableBody.innerHTML = "";
+  appendResultLegend(resultTableBody);
+  document.querySelectorAll("#playerTable tbody tr").forEach(row => {
+    row.cells[2].classList.remove("highlight");
+    const checkbox = row.querySelector("input[type=checkbox]");
+    checkbox.checked = false;
+    checkbox.disabled = false;
+  });
+  sortPlayerListByNumber();
+  setSelectionLocked(false);
+  const startBtn = document.getElementById("startBtn");
+  startBtn.disabled = false;
+  startBtn.style.background = "#ffb347";
+  setUploadButtonUploading(false);
+}
+
+async function uploadResults() {
+  if (isUploading) return;
+  const uploadCheck = document.getElementById("uploadCheck").checked;
+  const timerRows = Array.from(document.querySelectorAll("#timerTable tbody tr"));
+  const resultTableBody = document.querySelector("#resultTable tbody");
+  if (timerRows.length === 0) return;
+  const unfinished = timerRows.filter(row => row.dataset.finished !== "true");
+  if (unfinished.length > 0) {
+    alert(`還有 ${unfinished.length} 位選手尚未 Finish，請全部完成後再上傳。`);
+    return;
+  }
+
+  isUploading = true;
+  setUploadButtonUploading(true);
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+  const existingResults = [];
+  resultTableBody.querySelectorAll("tr").forEach(row => {
+    if (row.classList.contains("legend-row")) return;
+    const cells = row.cells;
+    existingResults.push({
+      date: cells[0].textContent.trim(),
+      num: cells[1].textContent.trim(),
+      name: cells[2].textContent.trim(),
+      time: cells[3].textContent.trim(),
+      status: row.dataset.uploadStatus || "pending"
+    });
+  });
+  const toAdd = [];
+  for (const row of timerRows) {
+    const num = (row.querySelector("td:nth-child(1)")?.textContent || "").trim();
+    const name = (row.querySelector("td:nth-child(2)")?.textContent || "").trim();
+    const time = (row.querySelector(".time")?.textContent || "").trim();
+    const resultRecord = { date: dateStr, num, name, time, status: uploadCheck ? "pending" : "pending" };
+    if (uploadCheck) {
+      try {
+        const formData = new FormData();
+        formData.append("sheet","200m");
+        formData.append("date", dateStr);
+        formData.append("num", num);
+        formData.append("name", name);
+        formData.append("time", time);
+        const response = await fetch(GAS_URL, { method: "POST", body: formData });
+        const resultText = await response.text();
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        if (resultText.includes("❌") || resultText.includes("錯誤")) {
+          throw new Error(resultText);
+        }
+        resultRecord.status = "uploaded";
+      } catch (err) {
+        resultRecord.status = "failed";
+      }
+    }
+    toAdd.push(resultRecord);
+  }
+  const allResults = existingResults.concat(toAdd);
+  function timeToMsSafe(t) {
+    if (!t) return Infinity;
+    const parts = t.split(":").map(p => Number(p));
+    if (parts.length !== 3 || parts.some(isNaN)) return Infinity;
+    const [m, s, ms] = parts;
+    return (m || 0) * 60000 + (s || 0) * 1000 + (ms || 0);
+  }
+  allResults.sort((a, b) => timeToMsSafe(a.time) - timeToMsSafe(b.time));
+  resultTableBody.innerHTML = "";
+  allResults.forEach(r => {
+    const newRow = resultTableBody.insertRow();
+    newRow.dataset.uploadStatus = r.status || "pending";
+    newRow.className = statusClass(r.status);
+    newRow.innerHTML = `<td>${r.date}</td><td>${r.num}</td><td>${r.name}</td><td>${r.time}</td>`;
+  });
+  appendResultLegend(resultTableBody);
+  document.querySelector("#timerTable tbody").innerHTML = "";
+  const startBtn = document.getElementById("startBtn");
+  startBtn.disabled = false;
+  startBtn.style.background = "#ffb347";
+  raceStarted = false;
+  setSelectionLocked(false);
+  isUploading = false;
+  setUploadButtonUploading(false);
+}
+
+function statusClass(status) {
+  if (status === "uploaded") return "status-uploaded";
+  if (status === "failed") return "status-failed";
+  return "status-pending";
+}
+
+function appendResultLegend(tbody) {
+  const legendRow = tbody.insertRow();
+  legendRow.className = "legend-row";
+  legendRow.innerHTML = `
+    <td colspan="4" style="text-align:left; font-size:16px;">
+      <span><span class="legend-swatch legend-uploaded"></span>已上傳</span>
+      <span style="margin-left:12px;"><span class="legend-swatch legend-failed"></span>上傳失敗</span>
+      <span style="margin-left:12px;"><span class="legend-swatch legend-pending"></span>尚未上傳</span>
+    </td>
+  `;
+}
+
+appendResultLegend(document.querySelector("#resultTable tbody"));
+
+window.addEventListener("beforeunload", function (e) {
+  const confirmationMessage = "⚠️警告：若重新整理，所有比賽成績資料將會遺失！\n\n是否確定要重整？";
+  e.preventDefault();
+  e.returnValue = confirmationMessage;
+  return confirmationMessage;
+});
+</script>
+
+</body>
+</html>
