@@ -274,6 +274,14 @@ function newPlayer(num, name, group = ""){
   };
 }
 
+function playerKey(group, num){
+  return `${String(group || "").trim().toUpperCase()}::${String(num || "").trim()}`;
+}
+
+function playerRecordKey(player){
+  return playerKey(player.group, player.num);
+}
+
 function getActivePlayerGroups(){
   return new Set(
     Array.from(document.querySelectorAll(".player-group-filter"))
@@ -418,7 +426,7 @@ function loadState(){
     if (!latestLogId && logs.length) latestLogId = logs[logs.length - 1].id;
 
     defaultPlayers.forEach(defaultPlayer => {
-      const existing = players.find(p => p.num === defaultPlayer.num);
+      const existing = players.find(p => playerRecordKey(p) === playerRecordKey(defaultPlayer));
       if (existing) {
         existing.group = defaultPlayer.group;
         existing.name = defaultPlayer.name;
@@ -426,10 +434,10 @@ function loadState(){
         players.push(newPlayer(defaultPlayer.num, defaultPlayer.name, defaultPlayer.group));
       }
     });
-    const defaultNums = new Set(defaultPlayers.map(p => p.num));
+    const defaultPlayerKeys = new Set(defaultPlayers.map(playerRecordKey));
     const activePlayerIds = new Set();
     players = players.filter(p => {
-      const keep = defaultNums.has(p.num);
+      const keep = defaultPlayerKeys.has(playerRecordKey(p));
       if (keep) activePlayerIds.add(p.id);
       return keep;
     });
@@ -702,10 +710,6 @@ function addPlayer(){
   const num = prompt("請輸入選手編號：");
   if (!num || !num.trim()) return;
   const cleanNum = num.trim();
-  if (players.some(p => p.num === cleanNum)) {
-    setStatus(`編號 ${cleanNum} 已存在，未新增選手`);
-    return;
-  }
 
   const name = prompt("請輸入選手姓名：");
   if (!name || !name.trim()) return;
@@ -714,6 +718,11 @@ function addPlayer(){
   const playerGroup = groupInput.trim().toUpperCase();
   if (!PLAYER_GROUPS.includes(playerGroup)) {
     setStatus("組別必須是 U10、U12、U14、U16 或 OPEN");
+    return;
+  }
+
+  if (players.some(p => playerRecordKey(p) === playerKey(playerGroup, cleanNum))) {
+    setStatus(`${playerGroup} ${cleanNum} 已存在`);
     return;
   }
 
